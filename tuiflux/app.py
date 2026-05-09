@@ -38,6 +38,8 @@ class ReaderScreen(Screen):
         Binding("space", "nothing", "Read and next", show=False),
         Binding("r", "nothing", "Page Read", show=False),
         Binding("enter", "nothing", "Read more", show=False),
+        Binding("insert", "prev_feed", "Previous Feed", show=False),
+        Binding("delete", "next_feed", "Next Feed", show=False),
         Binding("q", "nothing", "", show=False),  # 完全隐藏退出
     ]
     
@@ -198,6 +200,8 @@ class TuifluxApp(App):
     BINDINGS = [
         Binding("m", "toggle_read", "Read/Unread", show=False),
         Binding("space", "read_and_next", "Read/Unread and next"),
+        Binding("insert", "prev_feed", "Previous Feed"),
+        Binding("delete", "next_feed", "Next Feed"),
         Binding("r", "mark_page_read", "Page Read"),
         Binding("o", "open_in_browser", "Open in Browser"),
         Binding("s", "toggle_star", "Star/Unstar"),
@@ -205,9 +209,20 @@ class TuifluxApp(App):
 
         Binding("q", "quit", "Quit"),
         Binding("tab", "switch_focus", "Switch Pane", show=False),
-        Binding("pageup", "page_up", "Page Up", show=False),
-        Binding("pagedown", "page_down", "Page Down", show=False),
+
     ]
+
+    def action_prev_feed(self):
+        feed_list = self.query_one("#feed-list", ListView)
+        if feed_list.index is not None and feed_list.index > 0:
+            feed_list.index -= 1
+            self.query_one("#feed-list").focus()
+
+    def action_next_feed(self):
+        feed_list = self.query_one("#feed-list", ListView)
+        if feed_list.index is not None and feed_list.index < len(feed_list.children) - 1:
+            feed_list.index += 1
+            self.query_one("#feed-list").focus()
 
     def action_none(self):
         pass
