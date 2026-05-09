@@ -347,9 +347,12 @@ class TuifluxApp(App):
         entry_list = self.query_one("#entry-list", ListView)
         await entry_list.clear()
         
+        feed = self.all_feeds_data.get(self.current_feed_id)
+        feed_name = feed.title if feed else "Unknown"
+        
         total_pages = (len(self.entries) + self.PAGE_SIZE - 1) // self.PAGE_SIZE
         current_page = self.entry_page + 1 if self.entries else 0
-        self.query_one("#entries-label", Label).update(f"Entries ({current_page}/{total_pages})")
+        self.query_one("#entries-label", Label).update(f"Entries of {feed_name} ({current_page}/{total_pages})")
         
         start = self.entry_page * self.PAGE_SIZE
         page_entries = self.entries[start:start + self.PAGE_SIZE]
