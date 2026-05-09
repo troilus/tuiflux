@@ -91,21 +91,6 @@ class EntryItem(ListItem):
         self.update_style()
 
 class TuifluxApp(App):
-    def on_mouse_down(self, event) -> None:
-        event.stop()
-        event.prevent_default()
-
-    def on_mouse_up(self, event) -> None:
-        event.stop()
-        event.prevent_default()
-
-    def on_mouse_move(self, event) -> None:
-        event.stop()
-        event.prevent_default()
-
-    def on_click(self, event) -> None:
-        event.stop()
-        event.prevent_default()
 
     CSS = """
     #left-pane {
@@ -213,15 +198,25 @@ class TuifluxApp(App):
         overlay = self.query_one("#loading-overlay", Static)
         try:
             overlay.update("Fetching feeds and counts...")
-            feeds_resp, counters = await asyncio.gather(
-                self.api.client.get("/v1/feeds"),
-                self.api.get_counters()
-            )
-            feeds_resp.raise_for_status()
+            # Use gather but wrap in a try-except for more specific error info if needed
+            try:
+                feeds_resp, counters = await asyncio.gather(
+                    self.api.client.get("/v1/feeds"),
+                    self.api.get_counters()
+                )
+                feeds_resp.raise_for_status()
+            except Exception as e:
+                overlay.update(f"Network Error: {e}")
+                return
+
             feeds_data = feeds_resp.json()
             
             self.all_feeds_data = {f["id"]: Feed(id=f["id"], title=f["title"], unread_count=counters.get(str(f["id"]), 0)) for f in feeds_data}
             
+            if not self.all_feeds_data:
+                overlay.update("No feeds found on server.")
+                return
+
             overlay.display = False
             self.query_one("#main-container").display = True
             await self.refresh_feed_list_ui()
@@ -235,7 +230,8 @@ class TuifluxApp(App):
             
             self.run_worker(self.background_count_sync())
         except Exception as e:
-            overlay.update(f"Error: {e}")
+            overlay.update(f"Initialization Error: {e}")
+            self.log(f"Initial load error: {e}")
 
     async def background_count_sync(self):
         try:
@@ -247,9 +243,9 @@ class TuifluxApp(App):
     async def refresh_feed_list_ui(self):
         feed_list = self.query_one("#feed-list", ListView)
         await feed_list.clear()
+        # Show all feeds, not just unread ones
         for f in self.all_feeds_data.values():
-            if f.unread_count > 0:
-                await feed_list.append(FeedItem(f))
+            await feed_list.append(FeedItem(f))
 
     async def on_list_view_selected(self, event: ListView.Selected) -> None:
         if event.list_view.id == "feed-list":
