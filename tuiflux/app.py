@@ -54,13 +54,16 @@ class ReaderScreen(Screen):
     async def action_toggle_star(self):
         await self.app_ref.api.toggle_starred(self.entry.id)
         self.entry.starred = not self.entry.starred
+        star_status = "STARRED" if self.entry.starred else "UNSTARRED"
+        self.query_one("#reader-status", Label).update(f"Status: {self.entry.status.upper()} | {star_status}")
         await self.app_ref.update_entry_ui_state(self.entry)
 
     async def action_toggle_read(self):
         new_status = "read" if self.entry.status == "unread" else "unread"
         await self.app_ref.api.update_entries_status([self.entry.id], new_status)
         self.entry.status = new_status
-        self.query_one("#reader-status", Label).update(f"Status: {self.entry.status.upper()}")
+        star_status = "STARRED" if self.entry.starred else "UNSTARRED"
+        self.query_one("#reader-status", Label).update(f"Status: {self.entry.status.upper()} | {star_status}")
         await self.app_ref.update_entry_ui_state(self.entry)
 
     def action_scroll_up(self):
