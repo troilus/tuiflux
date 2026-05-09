@@ -40,17 +40,23 @@ jobs:
   release:
     needs: build
     runs-on: ubuntu-latest
+    permissions:
+      contents: write  # 明确授予写入权限
     steps:
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
-          path: dist
+          path: artifacts  # 改用独立目录避免冲突
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ github.event.inputs.tag }}
+          name: Release ${{ github.event.inputs.tag }}
           files: |
-            dist/tuiflux-Linux/tuiflux
-            dist/tuiflux-Windows/tuiflux.exe
+            artifacts/tuiflux-Linux/tuiflux
+            artifacts/tuiflux-Windows/tuiflux.exe
+          draft: false
+          prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
