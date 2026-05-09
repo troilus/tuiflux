@@ -13,13 +13,15 @@ from .config import load_config
 
 class ReaderScreen(Screen):
     BINDINGS = [
-        Binding("escape", "app.pop_screen", "Back to List"),
-        Binding("shift+j", "open_in_browser", "Open in Browser"),
-        Binding("m", "toggle_read", "Toggle Read/Unread"),
+        Binding("m", "toggle_read", "Read/Unread"),
+        Binding("o", "open_in_browser", "Open in Browser"),
+        Binding("s", "toggle_star", "Star/Unstar"),
+        Binding("?", "none", "显示所有快捷键"),
+        Binding("escape", "app.pop_screen", "Back to list"),
         Binding("up", "scroll_up", "Scroll Up", show=False),
         Binding("down", "scroll_down", "Scroll Down", show=False),
-        Binding("pageup", "page_up", "Page Up"),
-        Binding("pagedown", "page_down", "Page Down"),
+        Binding("pageup", "page_up", "Page Up", show=False),
+        Binding("pagedown", "page_down", "Page Down", show=False),
     ]
 
     def __init__(self, entry: Entry, app_ref):
@@ -35,8 +37,16 @@ class ReaderScreen(Screen):
             yield Static(Markdown(self.entry.content))
         yield Footer()
 
+    def action_none(self):
+        pass
+
     def action_open_in_browser(self):
         webbrowser.open(self.entry.url)
+
+    async def action_toggle_star(self):
+        await self.app_ref.api.toggle_starred(self.entry.id)
+        self.entry.starred = not self.entry.starred
+        await self.app_ref.update_entry_ui_state(self.entry)
 
     async def action_toggle_read(self):
         new_status = "read" if self.entry.status == "unread" else "unread"
@@ -161,16 +171,21 @@ class TuifluxApp(App):
     """
 
     BINDINGS = [
-        Binding("tab", "switch_focus", "Switch Pane"),
         Binding("m", "toggle_read", "Read/Unread"),
-        Binding("space", "read_and_next", "Read and Next"),
-        Binding("shift+s", "toggle_star", "Star/Unstar"),
-        Binding("shift+r", "mark_page_read", "Mark Page Read"),
-        Binding("enter", "handle_enter", "Enter"),
-        Binding("pageup", "page_up", "Page Up"),
-        Binding("pagedown", "page_down", "Page Down"),
+        Binding("o", "open_in_browser", "Open in Browser"),
+        Binding("r", "mark_page_read", "Page Read"),
+        Binding("s", "toggle_star", "Star/Unstar"),
+        Binding("space", "read_and_next", "Read and next"),
+        Binding("enter", "handle_enter", "Read more"),
+        Binding("?", "none", "显示所有快捷键"),
         Binding("q", "quit", "Quit"),
+        Binding("tab", "switch_focus", "Switch Pane", show=False),
+        Binding("pageup", "page_up", "Page Up", show=False),
+        Binding("pagedown", "page_down", "Page Down", show=False),
     ]
+
+    def action_none(self):
+        pass
 
     entry_page = reactive(0)
     PAGE_SIZE = 15
@@ -293,6 +308,13 @@ class TuifluxApp(App):
         if entry_list.children:
             entry_list.index = 0
             self.update_preview(entry_list.children[0].entry)
+
+    def action_open_in_browser(self) -> None:
+        entry_list = self.query_one("#entry-list", ListView)
+        if entry_list.index is not None:
+            item = entry_list.children[entry_list.index]
+            if isinstance(item, EntryItem):
+                webbrowser.open(item.entry.url)
 
     async def action_handle_enter(self):
         # Focus handling for feed-list is in on_list_view_selected
