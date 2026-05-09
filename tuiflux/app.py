@@ -119,7 +119,7 @@ class TuifluxApp(App):
         border: none;
     }
     ListView:focus {
-        border: double $accent;
+        border: none;
     }
     ListItem {
         padding: 0 1;
@@ -136,6 +136,9 @@ class TuifluxApp(App):
     }
     ListItem.--highlight {
         background: $accent-darken-1;
+    }
+    ListItem.--highlight Label {
+        text-style: bold;
     }
     
     #reader-container {
