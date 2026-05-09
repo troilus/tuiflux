@@ -1,5 +1,7 @@
 import webbrowser
 import asyncio
+import re
+import html
 from textual.app import App, ComposeResult
 from textual.widgets import Header, Footer, ListView, ListItem, Label, Static
 from textual.containers import Horizontal, Vertical, ScrollableContainer
@@ -11,6 +13,16 @@ from .api import MinifluxAPI
 from .models import Feed, Entry
 from .config import load_config
 
+def html_to_markdown(html_content: str) -> str:
+    """A basic HTML to text/markdown converter using standard library."""
+    text = html.unescape(html_content)
+    # Basic tag removal and formatting
+    text = re.sub(r'</p>', '\n\n', text)
+    text = re.sub(r'<br\s*/?>', '\n', text)
+    text = re.sub(r'<h[1-6]>(.*?)</h[1-6]>', r'\n# \1\n', text)
+    text = re.sub(r'<li>(.*?)</li>', r'- \1\n', text)
+    text = re.sub(r'<[^>]+>', '', text)
+    return text.strip()
 
 class ReaderScreen(Screen):
     BINDINGS = [
@@ -41,8 +53,7 @@ class ReaderScreen(Screen):
         star_status = "STARRED" if self.entry.starred else "UNSTARRED"
         yield Label(f"Status: {self.entry.status.upper()} | {star_status}", id="reader-status")
         with ScrollableContainer(id="reader-container"):
-            yield Static(f"# {self.entry.title}\n\n", id="reader-title")
-            yield Static(Markdown(self.entry.content))
+            yield Static(f"# {self.entry.title}\n\n[Source: {self.entry.url}]\n\n{html_to_markdown(self.entry.content)}", id="reader-content")
         yield Footer()
 
     def action_none(self):
@@ -302,7 +313,7 @@ class TuifluxApp(App):
                 self.update_preview(event.item.entry)
 
     def update_preview(self, entry: Entry):
-        self.query_one("#preview-content", Static).update(Markdown(entry.content[:500] + "..."))
+        self.query_one("#preview-content", Static).update(html_to_markdown(entry.content[:500] + "..."))
         self.query_one("#preview-url", Static).update(f"Source: {entry.url}")
 
     async def load_entries(self, feed_id: int):
