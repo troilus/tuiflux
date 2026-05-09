@@ -101,11 +101,11 @@ class TuifluxApp(App):
         width: 70%;
     }
     #entry-list-container {
-        height: 40%;
+        height: 17;
         border-bottom: solid green;
     }
     #preview-pane {
-        height: 60%;
+        height: 1fr;
         padding: 1 2;
     }
     #preview-url {
