@@ -314,6 +314,8 @@ class TuifluxApp(App):
     async def refresh_feed_list_ui(self):
         feed_list = self.query_one("#feed-list", ListView)
         await feed_list.clear()
+        total_unread = sum(f.unread_count for f in self.all_feeds_data.values())
+        self.query_one("#feeds-label", Label).update(f"Feeds ({total_unread})")
         # Only show feeds with unread items as requested
         for f in self.all_feeds_data.values():
             if f.unread_count > 0:
@@ -344,6 +346,11 @@ class TuifluxApp(App):
     async def refresh_entry_list(self):
         entry_list = self.query_one("#entry-list", ListView)
         await entry_list.clear()
+        
+        total_pages = (len(self.entries) + self.PAGE_SIZE - 1) // self.PAGE_SIZE
+        current_page = self.entry_page + 1 if self.entries else 0
+        self.query_one("#entries-label", Label).update(f"Entries ({current_page}/{total_pages})")
+        
         start = self.entry_page * self.PAGE_SIZE
         page_entries = self.entries[start:start + self.PAGE_SIZE]
         for entry in page_entries:
