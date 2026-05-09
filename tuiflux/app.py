@@ -239,6 +239,7 @@ class TuifluxApp(App):
         self.all_feeds_data = {} 
         self.entries = []
         self.current_feed_id = None
+        self.exhausted_feeds = set()
 
     def compose(self) -> ComposeResult:
         yield Header()
@@ -354,13 +355,17 @@ class TuifluxApp(App):
         await self.refresh_entry_list()
 
     async def fetch_more_entries(self):
+        if self.current_feed_id in self.exhausted_feeds:
+            return
+            
         self.query_one("#entries-label", Label).update(f"Entries... (loading...)")
         new_entries = await self.api.get_entries(self.current_feed_id, offset=len(self.entries))
         if new_entries:
             self.entries.extend(new_entries)
             await self.refresh_entry_list()
         else:
-            await self.refresh_entry_list() # Update label
+            self.exhausted_feeds.add(self.current_feed_id)
+            await self.refresh_entry_list() # Update label to remove loading...
 
     async def refresh_entry_list(self):
         entry_list = self.query_one("#entry-list", ListView)
@@ -387,14 +392,14 @@ class TuifluxApp(App):
         if entry_list.index is not None and entry_list.index < len(entry_list.children):
             self.update_preview(entry_list.children[entry_list.index].entry)
             
-        # Check if we are on the penultimate page
-        if current_page == total_pages - 1:
+        # Trigger pre-fetch if on last page
+        if current_page == total_pages:
             self.run_worker(self.fetch_more_entries())
 
     def check_pre_fetch(self):
-        # Trigger pre-fetch if on penultimate page
+        # Trigger pre-fetch if on last page
         total_pages = (len(self.entries) + self.PAGE_SIZE - 1) // self.PAGE_SIZE
-        if self.entry_page == total_pages - 2:
+        if self.entry_page == total_pages - 1:
             self.run_worker(self.fetch_more_entries())
 
     def action_open_in_browser(self) -> None:
