@@ -119,17 +119,23 @@ class TuifluxApp(App):
         border: none;
     }
     ListView:focus {
-        border: double green;
+        border: double $accent;
     }
     ListItem {
         padding: 0 1;
         background: transparent;
     }
     ListItem:focus {
-        background: $primary-darken-1;
+        background: $accent;
+        color: $text;
+        text-style: bold;
+    }
+    ListItem:focus Label {
+        color: $text;
+        text-style: bold;
     }
     ListItem.--highlight {
-        background: $primary-darken-1;
+        background: $accent-darken-1;
     }
     
     #reader-container {
@@ -153,8 +159,8 @@ class TuifluxApp(App):
 
     BINDINGS = [
         Binding("tab", "switch_focus", "Switch Pane"),
-        Binding("m", "toggle_read", "Mark Read/Unread"),
-        Binding("space", "read_and_next", "Mark Read and Next"),
+        Binding("m", "toggle_read", "Read/Unread"),
+        Binding("space", "read_and_next", "Read and Next"),
         Binding("shift+s", "toggle_star", "Star/Unstar"),
         Binding("shift+r", "mark_page_read", "Mark Page Read"),
         Binding("enter", "handle_enter", "Enter"),
