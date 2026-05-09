@@ -23,7 +23,7 @@ Download form https://github.com/troilus/tuiflux/releases or：
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/yourusername/tuiflux.git
+   git clone https://github.com/troilus/tuiflux.git
    cd tuiflux
    ```
 
