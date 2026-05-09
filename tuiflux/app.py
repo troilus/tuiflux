@@ -38,7 +38,8 @@ class ReaderScreen(Screen):
 
     def compose(self) -> ComposeResult:
         yield Header()
-        yield Label(f"Status: {self.entry.status.upper()}", id="reader-status")
+        star_status = "STARRED" if self.entry.starred else "UNSTARRED"
+        yield Label(f"Status: {self.entry.status.upper()} | {star_status}", id="reader-status")
         with ScrollableContainer(id="reader-container"):
             yield Static(f"# {self.entry.title}\n\n", id="reader-title")
             yield Static(Markdown(self.entry.content))
