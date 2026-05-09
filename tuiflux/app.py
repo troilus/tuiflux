@@ -11,18 +11,26 @@ from .api import MinifluxAPI
 from .models import Feed, Entry
 from .config import load_config
 
+
 class ReaderScreen(Screen):
     BINDINGS = [
+        Binding("escape", "app.pop_screen", "Back to list"),
         Binding("m", "toggle_read", "Read/Unread"),
         Binding("o", "open_in_browser", "Open in Browser"),
         Binding("s", "toggle_star", "Star/Unstar"),
-        Binding("?", "none", "显示所有快捷键"),
-        Binding("escape", "app.pop_screen", "Back to list"),
+        Binding("?", "app.command_palette", "Help"),
         Binding("up", "scroll_up", "Scroll Up", show=False),
         Binding("down", "scroll_down", "Scroll Down", show=False),
         Binding("pageup", "page_up", "Page Up", show=False),
         Binding("pagedown", "page_down", "Page Down", show=False),
+        # 隐藏 App 层面的快捷键，改为继承或自定义实现
+        Binding("space", "nothing", "Read and next", show=False),
+        Binding("r", "nothing", "Page Read", show=False),
+        Binding("enter", "nothing", "Read more", show=False),
+        Binding("q", "nothing", "", show=False),  # 完全隐藏退出
     ]
+    
+    
 
     def __init__(self, entry: Entry, app_ref):
         super().__init__()
@@ -172,12 +180,12 @@ class TuifluxApp(App):
 
     BINDINGS = [
         Binding("m", "toggle_read", "Read/Unread"),
-        Binding("o", "open_in_browser", "Open in Browser"),
-        Binding("r", "mark_page_read", "Page Read"),
-        Binding("s", "toggle_star", "Star/Unstar"),
         Binding("space", "read_and_next", "Read and next"),
+        Binding("r", "mark_page_read", "Page Read"),
+        Binding("o", "open_in_browser", "Open in Browser"),
+        Binding("s", "toggle_star", "Star/Unstar"),
         Binding("enter", "handle_enter", "Read more"),
-        Binding("?", "none", "显示所有快捷键"),
+        Binding("?", "command_palette", "Help"),
         Binding("q", "quit", "Quit"),
         Binding("tab", "switch_focus", "Switch Pane", show=False),
         Binding("pageup", "page_up", "Page Up", show=False),
