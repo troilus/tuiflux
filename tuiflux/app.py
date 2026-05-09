@@ -295,6 +295,7 @@ class TuifluxApp(App):
 
     async def refresh_feed_list_ui(self):
         feed_list = self.query_one("#feed-list", ListView)
+        current_index = feed_list.index
         await feed_list.clear()
         total_unread = sum(f.unread_count for f in self.all_feeds_data.values())
         self.query_one("#feeds-label", Label).update(f"Feeds ({total_unread})")
@@ -302,6 +303,11 @@ class TuifluxApp(App):
         for f in self.all_feeds_data.values():
             if f.unread_count > 0:
                 await feed_list.append(FeedItem(f))
+        
+        if current_index is not None and current_index < len(feed_list.children):
+            feed_list.index = current_index
+        elif feed_list.children:
+            feed_list.index = 0
 
     async def on_list_view_selected(self, event: ListView.Selected) -> None:
         if event.list_view.id == "feed-list":
@@ -329,6 +335,7 @@ class TuifluxApp(App):
 
     async def refresh_entry_list(self):
         entry_list = self.query_one("#entry-list", ListView)
+        current_index = entry_list.index
         await entry_list.clear()
         
         feed = self.all_feeds_data.get(self.current_feed_id)
@@ -342,9 +349,14 @@ class TuifluxApp(App):
         page_entries = self.entries[start:start + self.PAGE_SIZE]
         for entry in page_entries:
             await entry_list.append(EntryItem(entry))
-        if entry_list.children:
+        
+        if current_index is not None and current_index < len(entry_list.children):
+            entry_list.index = current_index
+        elif entry_list.children:
             entry_list.index = 0
-            self.update_preview(entry_list.children[0].entry)
+            
+        if entry_list.index is not None and entry_list.index < len(entry_list.children):
+            self.update_preview(entry_list.children[entry_list.index].entry)
 
     def action_open_in_browser(self) -> None:
         entry_list = self.query_one("#entry-list", ListView)
