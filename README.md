@@ -13,7 +13,7 @@ TuiFlux allows you to browse your RSS feeds (powered by Miniflux) directly in yo
 
 
 ## Installation and Setup
-
+Download form https://github.com/troilus/tuiflux/releases or：
 ### Prerequisites
 
 - Python 3.8+
