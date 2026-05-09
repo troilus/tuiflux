@@ -43,6 +43,8 @@ TuiFlux allows you to browse your RSS feeds (powered by Miniflux) directly in yo
 - `s`: Bookmark/Unbookmark selected article
 - `o`: Open article link in default browser
 - `r`: Mark the visible 15 articles as read
+- `Insert`: Previous Feed
+- `Delete`: Next Feed
 - `PageUp`/`PageDown`: Scroll article list
 
 ### Reader Screen
