@@ -211,7 +211,11 @@ class TuifluxApp(App):
 
             feeds_data = feeds_resp.json()
             
-            self.all_feeds_data = {f["id"]: Feed(id=f["id"], title=f["title"], unread_count=counters.get(str(f["id"]), 0)) for f in feeds_data}
+            self.all_feeds_data = {}
+            for f in feeds_data:
+                key = f["id"]
+                count = counters.get(str(key), counters.get(key, 0))
+                self.all_feeds_data[key] = Feed(id=key, title=f["title"], unread_count=count)
             
             if not self.all_feeds_data:
                 overlay.update("No feeds found on server.")
@@ -243,9 +247,10 @@ class TuifluxApp(App):
     async def refresh_feed_list_ui(self):
         feed_list = self.query_one("#feed-list", ListView)
         await feed_list.clear()
-        # Show all feeds, not just unread ones
+        # Only show feeds with unread items as requested
         for f in self.all_feeds_data.values():
-            await feed_list.append(FeedItem(f))
+            if f.unread_count > 0:
+                await feed_list.append(FeedItem(f))
 
     async def on_list_view_selected(self, event: ListView.Selected) -> None:
         if event.list_view.id == "feed-list":

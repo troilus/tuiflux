@@ -86,7 +86,28 @@ class MinifluxAPI:
     async def get_counters(self) -> Dict[str, int]:
         response = await self.client.get("/v1/entries/counters")
         response.raise_for_status()
-        return response.json().get("feeds", {})
+        data = response.json()
+        feeds = data.get("feeds", {})
+        if feeds:
+            return feeds
+
+        # Fallback: aggregate unread entries per feed if counters API returns empty
+        counters = {}
+        offset = 0
+        limit = 1000
+        while True:
+            resp = await self.client.get("/v1/entries", params={"status": "unread", "limit": limit, "offset": offset})
+            resp.raise_for_status()
+            d = resp.json()
+            entries = d.get("entries", [])
+            total = d.get("total", 0)
+            for e in entries:
+                fid = str(e.get("feed_id"))
+                counters[fid] = counters.get(fid, 0) + 1
+            offset += limit
+            if offset >= total or not entries:
+                break
+        return counters
 
     async def close(self):
         await self.client.aclose()
