@@ -36,7 +36,7 @@ class ReaderScreen(Screen):
         Binding("pagedown", "page_down", "Page Down", show=False),
         # 隐藏 App 层面的快捷键，改为继承或自定义实现
         Binding("space", "nothing", "Read and next", show=False),
-        Binding("r", "nothing", "Page Read", show=False),
+        Binding("r", "nothing", "List Read", show=False),
         Binding("enter", "nothing", "Read more", show=False),
         Binding("insert", "prev_feed", "Previous Feed", show=False),
         Binding("delete", "next_feed", "Next Feed", show=False),
@@ -202,7 +202,7 @@ class TuifluxApp(App):
         Binding("space", "read_and_next", "Read/Unread and next"),
         Binding("insert", "prev_feed", "Previous Feed"),
         Binding("delete", "next_feed", "Next Feed"),
-        Binding("r", "mark_page_read", "Page Read"),
+        Binding("r", "mark_page_read", "List Read"),
         Binding("o", "open_in_browser", "Open in Browser"),
         Binding("s", "toggle_star", "Star/Unstar"),
         Binding("enter", "handle_enter", "Read more"),
