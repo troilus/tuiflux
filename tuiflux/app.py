@@ -103,21 +103,34 @@ class EntryItem(ListItem):
         self.entry = entry
 
     def compose(self) -> ComposeResult:
-        yield Label(self.get_label_text(), id="entry-label")
-
-    def get_label_text(self):
         star = "★ " if self.entry.starred else "  "
-        return f"{star}{self.entry.title}"
+        yield Label(star, id="entry-star")
+        yield Label(self.entry.title, id="entry-title")
+        yield Label(self.get_time_str(), id="entry-time")
+
+    def get_time_str(self):
+        from datetime import datetime, timezone
+        try:
+            pub_date = datetime.fromisoformat(self.entry.published_at.replace("Z", "+00:00"))
+            now = datetime.now(timezone.utc)
+            delta = now - pub_date
+            hours = int(delta.total_seconds() / 3600)
+            return f"{hours}h" if hours < 24 else f"{hours // 24}d"
+        except:
+            return ""
 
     def update_style(self):
-        label = self.query_one("#entry-label", Label)
-        label.update(self.get_label_text())
-        if self.entry.starred:
-            label.styles.color = "gold"
-        elif self.entry.status == "read":
-            label.styles.color = "gray"
-        else:
-            label.styles.color = "white"
+        star_label = self.query_one("#entry-star", Label)
+        title_label = self.query_one("#entry-title", Label)
+        time_label = self.query_one("#entry-time", Label)
+        star_label.update("★ " if self.entry.starred else "  ")
+        title_label.update(self.entry.title)
+        time_label.update(self.get_time_str())
+        
+        color = "gold" if self.entry.starred else ("gray" if self.entry.status == "read" else "white")
+        star_label.styles.color = color
+        title_label.styles.color = color
+        time_label.styles.color = color
 
     def on_mount(self):
         self.update_style()
@@ -140,10 +153,13 @@ class TuifluxApp(App):
         height: 1fr;
         padding: 1 2;
     }
-    #preview-url {
-        color: white;
-        text-style: underline;
-        margin-top: 1;
+    #entry-title {
+        width: 1fr;
+        overflow: hidden;
+    }
+    #entry-time {
+        width: 5;
+        content-align: right middle;
     }
     ListView {
         scrollbar-size: 0 0;

@@ -17,3 +17,4 @@ class Entry:
     starred: bool
     feed_id: int
     feed_title: str
+    published_at: str

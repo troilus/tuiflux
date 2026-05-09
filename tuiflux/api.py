@@ -67,7 +67,8 @@ class MinifluxAPI:
                 status=e["status"],
                 starred=e["starred"],
                 feed_id=e["feed_id"],
-                feed_title=e["feed"]["title"]
+                feed_title=e["feed"]["title"],
+                published_at=e["published_at"]
             ))
         return entries
 
