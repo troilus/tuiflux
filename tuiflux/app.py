@@ -18,7 +18,6 @@ class ReaderScreen(Screen):
         Binding("m", "toggle_read", "Read/Unread"),
         Binding("o", "open_in_browser", "Open in Browser"),
         Binding("s", "toggle_star", "Star/Unstar"),
-        Binding("?", "app.command_palette", "Help"),
         Binding("up", "scroll_up", "Scroll Up", show=False),
         Binding("down", "scroll_down", "Scroll Down", show=False),
         Binding("pageup", "page_up", "Page Up", show=False),
@@ -127,7 +126,7 @@ class TuifluxApp(App):
         padding: 1 2;
     }
     #preview-url {
-        color: blue;
+        color: white;
         text-style: underline;
         margin-top: 1;
     }
@@ -185,7 +184,7 @@ class TuifluxApp(App):
         Binding("o", "open_in_browser", "Open in Browser"),
         Binding("s", "toggle_star", "Star/Unstar"),
         Binding("enter", "handle_enter", "Read more"),
-        Binding("?", "command_palette", "Help"),
+
         Binding("q", "quit", "Quit"),
         Binding("tab", "switch_focus", "Switch Pane", show=False),
         Binding("pageup", "page_up", "Page Up", show=False),
