@@ -206,6 +206,8 @@ class TuifluxApp(App):
         Binding("o", "open_in_browser", "Open in Browser"),
         Binding("s", "toggle_star", "Star/Unstar"),
         Binding("enter", "handle_enter", "Read more"),
+        Binding("pageup", "page_up", "Page Up"),
+        Binding("pagedown", "page_down", "Page Down"),
 
         Binding("q", "quit", "Quit"),
         Binding("tab", "switch_focus", "Switch Pane", show=False),
@@ -260,8 +262,8 @@ class TuifluxApp(App):
 
     async def initial_load(self):
         overlay = self.query_one("#loading-overlay", Static)
+        overlay.update("Fetching feeds and counts...")
         try:
-            overlay.update("Fetching feeds and counts...")
             # Use gather but wrap in a try-except for more specific error info if needed
             try:
                 feeds_resp, counters = await asyncio.gather(
@@ -274,9 +276,11 @@ class TuifluxApp(App):
                 return
 
             feeds_data = feeds_resp.json()
+            total_feeds = len(feeds_data)
             
             self.all_feeds_data = {}
-            for f in feeds_data:
+            for i, f in enumerate(feeds_data, 1):
+                overlay.update(f"Fetching feeds and counts... {i}")
                 key = f["id"]
                 count = counters.get(str(key), counters.get(key, 0))
                 self.all_feeds_data[key] = Feed(id=key, title=f["title"], unread_count=count)
@@ -345,8 +349,18 @@ class TuifluxApp(App):
         self.query_one("#preview-url", Static).update("") # Clear this as it's now in content
 
     async def load_entries(self, feed_id: int):
-        self.entries = await self.api.get_entries(feed_id)
+        self.entries = await self.api.get_entries(feed_id, offset=0)
+        self.entry_page = 0
         await self.refresh_entry_list()
+
+    async def fetch_more_entries(self):
+        self.query_one("#entries-label", Label).update(f"Entries... (loading...)")
+        new_entries = await self.api.get_entries(self.current_feed_id, offset=len(self.entries))
+        if new_entries:
+            self.entries.extend(new_entries)
+            await self.refresh_entry_list()
+        else:
+            await self.refresh_entry_list() # Update label
 
     async def refresh_entry_list(self):
         entry_list = self.query_one("#entry-list", ListView)
@@ -372,6 +386,16 @@ class TuifluxApp(App):
             
         if entry_list.index is not None and entry_list.index < len(entry_list.children):
             self.update_preview(entry_list.children[entry_list.index].entry)
+            
+        # Check if we are on the penultimate page
+        if current_page == total_pages - 1:
+            self.run_worker(self.fetch_more_entries())
+
+    def check_pre_fetch(self):
+        # Trigger pre-fetch if on penultimate page
+        total_pages = (len(self.entries) + self.PAGE_SIZE - 1) // self.PAGE_SIZE
+        if self.entry_page == total_pages - 2:
+            self.run_worker(self.fetch_more_entries())
 
     def action_open_in_browser(self) -> None:
         entry_list = self.query_one("#entry-list", ListView)
@@ -396,6 +420,8 @@ class TuifluxApp(App):
             if (self.entry_page + 1) * self.PAGE_SIZE < len(self.entries):
                 self.entry_page += 1
                 self.run_worker(self.refresh_entry_list())
+            else:
+                self.run_worker(self.fetch_more_entries())
 
     async def action_toggle_read(self) -> None:
         entry_list = self.query_one("#entry-list", ListView)

@@ -48,8 +48,8 @@ class MinifluxAPI:
         
         return [f for f in feeds_dict.values() if f.unread_count > 0]
 
-    async def get_entries(self, feed_id: Optional[int] = None, status: str = "unread") -> List[Entry]:
-        params = {"status": status, "limit": 100, "order": "published_at", "direction": "desc"}
+    async def get_entries(self, feed_id: Optional[int] = None, status: str = "unread", offset: int = 0) -> List[Entry]:
+        params = {"status": status, "limit": 90, "order": "published_at", "direction": "desc", "offset": offset}
         if feed_id:
             params["feed_id"] = feed_id
             
