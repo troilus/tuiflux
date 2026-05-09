@@ -214,8 +214,8 @@ class TuifluxApp(App):
     """
 
     BINDINGS = [
-        Binding("m", "toggle_read", "Read/Unread"),
-        Binding("space", "read_and_next", "Read and next"),
+        Binding("m", "toggle_read", "Read/Unread", show=False),
+        Binding("space", "read_and_next", "Read/Unread and next"),
         Binding("r", "mark_page_read", "Page Read"),
         Binding("o", "open_in_browser", "Open in Browser"),
         Binding("s", "toggle_star", "Star/Unstar"),
@@ -336,8 +336,10 @@ class TuifluxApp(App):
                 self.update_preview(event.item.entry)
 
     def update_preview(self, entry: Entry):
-        self.query_one("#preview-content", Static).update(html_to_markdown(entry.content[:500] + "..."))
-        self.query_one("#preview-url", Static).update(f"Source: {entry.url}")
+        time_str = entry.published_at.split('T')[0] # Using simple date format
+        preview_text = f"TIME: {time_str}\nSource: {entry.url}\n\n{html_to_markdown(entry.content[:500] + '...')}"
+        self.query_one("#preview-content", Static).update(preview_text)
+        self.query_one("#preview-url", Static).update("") # Clear this as it's now in content
 
     async def load_entries(self, feed_id: int):
         self.entries = await self.api.get_entries(feed_id)
