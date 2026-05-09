@@ -141,14 +141,14 @@ class TuifluxApp(App):
     CSS = """
     #left-pane {
         width: 30%;
-        border-right: solid green;
+        border-right: solid orange;
     }
     #right-pane {
         width: 70%;
     }
     #entry-list-container {
         height: 17;
-        border-bottom: solid green;
+        border-bottom: solid orange;
     }
     #preview-pane {
         height: 1fr;
@@ -405,21 +405,21 @@ class TuifluxApp(App):
         if entry_list.index is not None:
             item = entry_list.children[entry_list.index]
             if isinstance(item, EntryItem):
-                if item.entry.status == "unread":
-                    await self.api.update_entries_status([item.entry.id], "read")
-                    item.entry.status = "read"
-                    item.update_style()
-                    await self.sync_feed_count(item.entry.feed_id, "unread", "read")
+                # Toggle status: unread -> read, read -> unread
+                old_status = item.entry.status
+                new_status = "read" if old_status == "unread" else "unread"
+                
+                await self.api.update_entries_status([item.entry.id], new_status)
+                item.entry.status = new_status
+                item.update_style()
+                await self.sync_feed_count(item.entry.feed_id, old_status, new_status)
                 
                 if entry_list.index < len(entry_list.children) - 1:
                     entry_list.index += 1
                 elif (self.entry_page + 1) * self.PAGE_SIZE < len(self.entries):
-                    # Only turn page if no unread entries left on current page
-                    has_unread = any(isinstance(child, EntryItem) and child.entry.status == "unread" for child in entry_list.children)
-                    if not has_unread:
-                        self.entry_page += 1
-                        await self.refresh_entry_list()
-                        entry_list.index = 0
+                    self.entry_page += 1
+                    await self.refresh_entry_list()
+                    entry_list.index = 0
 
     async def sync_feed_count(self, feed_id, old_status, new_status):
         feed_data = self.all_feeds_data.get(feed_id)
