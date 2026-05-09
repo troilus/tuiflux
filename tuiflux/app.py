@@ -103,10 +103,11 @@ class EntryItem(ListItem):
         self.entry = entry
 
     def compose(self) -> ComposeResult:
-        star = "★ " if self.entry.starred else "  "
-        yield Label(star, id="entry-star")
-        yield Label(self.entry.title, id="entry-title")
-        yield Label(self.get_time_str(), id="entry-time")
+        with Horizontal(id="entry-row"):
+            star = "★ " if self.entry.starred else "  "
+            yield Label(star, id="entry-star")
+            yield Label(self.entry.title, id="entry-title")
+            yield Label(self.get_time_str(), id="entry-time")
 
     def get_time_str(self):
         from datetime import datetime, timezone
@@ -172,6 +173,10 @@ class TuifluxApp(App):
     ListItem {
         padding: 0 1;
         background: transparent;
+    }
+    #entry-row {
+        height: 1;
+        width: 100%;
     }
     ListItem:focus {
         background: $accent;
