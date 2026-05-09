@@ -6,6 +6,12 @@ TuiFlux is a Terminal-based User Interface (TUI) RSS reader client for Miniflux,
 
 TuiFlux allows you to browse your RSS feeds (powered by Miniflux) directly in your terminal. It supports marking articles as read/unread, bookmarking, previewing articles, and opening them in your browser.
 
+<img width="1113" height="626" alt="图片" src="https://github.com/user-attachments/assets/b56c95ca-d7cc-4754-9354-d1372ef64d4a" />
+
+<img width="1113" height="626" alt="图片" src="https://github.com/user-attachments/assets/91da5939-f122-4b05-8dba-f47b9f13ff74" />
+
+
+
 ## Installation and Setup
 
 ### Prerequisites
