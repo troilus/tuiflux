@@ -85,14 +85,15 @@ class MinifluxAPI:
         response.raise_for_status()
 
     async def get_counters(self) -> Dict[str, int]:
-        response = await self.client.get("/v1/entries/counters")
+        response = await self.client.get("/v1/feeds/counters")  # ✅ 修正端点
         response.raise_for_status()
         data = response.json()
-        feeds = data.get("feeds", {})
-        if feeds:
-            return feeds
-
-        # Fallback: aggregate unread entries per feed if counters API returns empty
+        # ✅ 修正：返回 unreads 对象，而不是 feeds
+        unreads = data.get("unreads", {})
+        if unreads:
+            return unreads  # 返回 {"feed_id": unread_count}
+        
+        # Fallback保持不变
         counters = {}
         offset = 0
         limit = 1000
