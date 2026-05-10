@@ -1,5 +1,7 @@
 # TuiFlux
 
+中文介绍 https://github.com/troilus/tuiflux/blob/main/README_zh.md
+
 TuiFlux is a Terminal-based User Interface (TUI) RSS reader client for Miniflux, built with Python and the Textual library. It aims to provide an efficient and minimalist RSS reading experience.
 
 ## Introduction
