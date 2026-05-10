@@ -82,28 +82,39 @@ def html_to_markdown(html_content: str) -> str:
     return text.strip()
 
 class ReaderScreen(Screen):
+    BINDINGS = [
+        Binding("escape", "app.pop_screen", "Back"),
+        Binding("m", "toggle_read", "Read/Unread"),
+        Binding("o", "open_in_browser", "Browser"),
+        Binding("s", "toggle_star", "Star"),
+        # Navigation and hidden bindings
+        Binding("up", "scroll_up", "Up", show=False),
+        Binding("down", "scroll_down", "Down", show=False),
+        Binding("pageup", "page_up", "Page Up", show=False),
+        Binding("pagedown", "page_down", "Page Down", show=False),
+        Binding("space", "nothing", "Nothing", show=False),
+        Binding("r", "nothing", "Nothing", show=False),
+        Binding("enter", "nothing", "Nothing", show=False),
+        Binding("insert", "prev_feed", "Prev Feed", show=False),
+        Binding("delete", "next_feed", "Next Feed", show=False),
+        Binding("q", "nothing", "Nothing", show=False),
+    ]
+
     def __init__(self, entry: Entry, app_ref):
         self.entry = entry
         self.app_ref = app_ref
         self.locale = LOCALES.get(self.app_ref.language, LOCALES["en"])
         super().__init__()
-        # Bind keys with localized descriptions in __init__
-        self.bind("escape", "app.pop_screen", description=self.locale["back_to_list"])
-        self.bind("m", "toggle_read", description=self.locale["toggle_read"])
-        self.bind("o", "open_in_browser", description=self.locale["open_in_browser"])
-        self.bind("s", "toggle_star", description=self.locale["star_unstar"])
         
-        # Hidden bindings for navigation and other actions
-        self.bind("up", "scroll_up", show=False)
-        self.bind("down", "scroll_down", show=False)
-        self.bind("pageup", "page_up", show=False)
-        self.bind("pagedown", "page_down", show=False)
-        self.bind("space", "nothing", show=False)
-        self.bind("r", "nothing", show=False)
-        self.bind("enter", "nothing", show=False)
-        self.bind("insert", "prev_feed", show=False)
-        self.bind("delete", "next_feed", show=False)
-        self.bind("q", "nothing", show=False)
+        # Update bindings with localized descriptions if supported by the version
+        try:
+            self.bind("escape", "app.pop_screen", description=self.locale["back_to_list"])
+            self.bind("m", "toggle_read", description=self.locale["toggle_read"])
+            self.bind("o", "open_in_browser", description=self.locale["open_in_browser"])
+            self.bind("s", "toggle_star", description=self.locale["star_unstar"])
+        except AttributeError:
+            # Fallback for older Textual versions where bind() is not available on Screen
+            pass
 
     def on_mount(self):
         pass
@@ -212,7 +223,7 @@ class TuifluxApp(App):
         super().__init__()
         
         # Bind keys with localized descriptions in __init__
-        self.bind("m", "toggle_read", description=self.locale["toggle_read"], show=False)
+        self.bind("m", "toggle_read", description=self.locale["toggle_read"])
         self.bind("f", "refresh_all", description=self.locale["refresh"])
         self.bind("space", "read_and_next", description=self.locale["read_and_next"])
         self.bind("insert", "prev_feed", description=self.locale["prev_feed"])
