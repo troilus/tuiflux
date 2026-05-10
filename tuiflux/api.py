@@ -49,7 +49,7 @@ class MinifluxAPI:
         return [f for f in feeds_dict.values() if f.unread_count > 0]
 
     async def get_entries(self, feed_id: Optional[int] = None, status: str = "unread", 
-                            offset: int = 0, limit: int = 100) -> List[Entry]:
+                            offset: int = 0, limit: int = 45) -> List[Entry]:
             """获取条目"""
             if feed_id:
                 # 特定feed的条目 ✅ 使用正确的端点
