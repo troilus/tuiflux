@@ -4,15 +4,44 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Tag to release'
+        description: 'Tag to release (e.g., v1.0.0)'
         required: true
+      release_notes:
+        description: 'Release Notes'
+        required: true
+        type: string
 
 jobs:
   build:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        include:
+          # Windows
+          - os: windows-latest
+            target: win64
+            arch: amd64
+            extension: .exe
+          # Linux amd64
+          - os: ubuntu-latest
+            target: linux
+            arch: amd64
+            extension: ''
+          # Linux arm64
+          - os: ubuntu-latest
+            target: linux
+            arch: arm64
+            extension: ''
+          # Linux arm32
+          - os: ubuntu-latest
+            target: linux
+            arch: armv7
+            extension: ''
+          # macOS amd64
+          - os: macos-latest
+            target: macos
+            arch: amd64
+            extension: ''
     
     steps:
       - uses: actions/checkout@v4
@@ -29,33 +58,37 @@ jobs:
           
       - name: Build with PyInstaller
         run: |
-          pyinstaller --onefile main.py --name tuiflux
+          pyinstaller --onefile main.py --name "tuiflux-${{ matrix.target }}-${{ matrix.arch }}"
+        shell: bash
           
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: tuiflux-${{ runner.os }}
-          path: dist/tuiflux${{ runner.os == 'Windows' && '.exe' || '' }}
+          name: tuiflux-${{ matrix.target }}-${{ matrix.arch }}
+          path: dist/tuiflux-${{ matrix.target }}-${{ matrix.arch }}${{ matrix.extension }}
 
   release:
     needs: build
     runs-on: ubuntu-latest
     permissions:
-      contents: write  # 明确授予写入权限
+      contents: write
     steps:
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
-          path: artifacts  # 改用独立目录避免冲突
+          path: artifacts
 
+      - name: Display structure of downloaded files
+        run: ls -R artifacts
+          
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.event.inputs.tag }}
           name: Release ${{ github.event.inputs.tag }}
+          body: ${{ github.event.inputs.release_notes }}
           files: |
-            artifacts/tuiflux-Linux/tuiflux
-            artifacts/tuiflux-Windows/tuiflux.exe
+            artifacts/**/*
           draft: false
           prerelease: false
         env:
