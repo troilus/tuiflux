@@ -13,6 +13,63 @@ from .api import MinifluxAPI
 from .models import Feed, Entry
 from .config import load_config
 
+LOCALES = {
+    "en": {
+        "back_to_list": "Back to list",
+        "toggle_read": "Read/Unread",
+        "open_in_browser": "Open in Browser",
+        "star_unstar": "Star/Unstar",
+        "refresh": "Refresh",
+        "read_and_next": "Read and next",
+        "prev_feed": "Previous Feed",
+        "next_feed": "Next Feed",
+        "mark_page_read": "List Read",
+        "read_more": "Read more",
+        "quit": "Quit",
+        "switch_pane": "Switch Pane",
+        "initializing": "Initializing...",
+        "feeds": "Feeds",
+        "entries": "Entries",
+        "select_entry_preview": "Select an entry to preview",
+        "fetching_feeds": "Fetching feeds and counts...",
+        "no_feeds_found": "No feeds found on server.",
+        "status": "Status",
+        "source": "Source",
+        "starred": "STARRED",
+        "unstarred": "UNSTARRED",
+        "time": "TIME",
+        "entries_of": "Entries of",
+        "loading": "loading",
+    },
+    "cn": {
+        "back_to_list": "返回列表",
+        "toggle_read": "已读/未读",
+        "open_in_browser": "浏览器打开",
+        "star_unstar": "收藏/取消",
+        "refresh": "刷新",
+        "read_and_next": "已读并下一条",
+        "prev_feed": "上一个源",
+        "next_feed": "下一个源",
+        "mark_page_read": "本页已读",
+        "read_more": "阅读全文",
+        "quit": "退出",
+        "switch_pane": "切换面板",
+        "initializing": "正在初始化...",
+        "feeds": "订阅源",
+        "entries": "文章列表",
+        "select_entry_preview": "选择文章以预览",
+        "fetching_feeds": "正在获取订阅源和计数...",
+        "no_feeds_found": "服务器上未找到订阅源。",
+        "status": "状态",
+        "source": "来源",
+        "starred": "已收藏",
+        "unstarred": "未收藏",
+        "time": "时间",
+        "entries_of": "文章列表 -",
+        "loading": "正在加载",
+    }
+}
+
 def html_to_markdown(html_content: str) -> str:
     """A basic HTML to text/markdown converter using standard library."""
     text = html.unescape(html_content)
@@ -34,28 +91,33 @@ class ReaderScreen(Screen):
         Binding("down", "scroll_down", "Scroll Down", show=False),
         Binding("pageup", "page_up", "Page Up", show=False),
         Binding("pagedown", "page_down", "Page Down", show=False),
-        # 隐藏 App 层面的快捷键，改为继承或自定义实现
         Binding("space", "nothing", "Read and next", show=False),
         Binding("r", "nothing", "List Read", show=False),
         Binding("enter", "nothing", "Read more", show=False),
         Binding("insert", "prev_feed", "Previous Feed", show=False),
         Binding("delete", "next_feed", "Next Feed", show=False),
-        Binding("q", "nothing", "", show=False),  # 完全隐藏退出
+        Binding("q", "nothing", "", show=False),
     ]
-    
-    
 
     def __init__(self, entry: Entry, app_ref):
         super().__init__()
         self.entry = entry
         self.app_ref = app_ref
+        self.locale = LOCALES.get(self.app_ref.language, LOCALES["en"])
+
+    def on_mount(self):
+        # Update localized descriptions
+        self.bind("escape", "app.pop_screen", description=self.locale["back_to_list"])
+        self.bind("m", "toggle_read", description=self.locale["toggle_read"])
+        self.bind("o", "open_in_browser", description=self.locale["open_in_browser"])
+        self.bind("s", "toggle_star", description=self.locale["star_unstar"])
 
     def compose(self) -> ComposeResult:
         yield Header()
-        star_status = "STARRED" if self.entry.starred else "UNSTARRED"
-        yield Label(f"Status: {self.entry.status.upper()} | {star_status}", id="reader-status")
+        star_status = self.locale["starred"] if self.entry.starred else self.locale["unstarred"]
+        yield Label(f"{self.locale['status']}: {self.entry.status.upper()} | {star_status}", id="reader-status")
         with ScrollableContainer(id="reader-container"):
-            yield Static(f"# {self.entry.title}\n\n[Source: {self.entry.url}]\n\n{html_to_markdown(self.entry.content)}", id="reader-content")
+            yield Static(f"# {self.entry.title}\n\n[{self.locale['source']}: {self.entry.url}]\n\n{html_to_markdown(self.entry.content)}", id="reader-content")
         yield Footer()
 
     def action_none(self):
@@ -67,16 +129,16 @@ class ReaderScreen(Screen):
     async def action_toggle_star(self):
         await self.app_ref.api.toggle_starred(self.entry.id)
         self.entry.starred = not self.entry.starred
-        star_status = "STARRED" if self.entry.starred else "UNSTARRED"
-        self.query_one("#reader-status", Label).update(f"Status: {self.entry.status.upper()} | {star_status}")
+        star_status = self.locale["starred"] if self.entry.starred else self.locale["unstarred"]
+        self.query_one("#reader-status", Label).update(f"{self.locale['status']}: {self.entry.status.upper()} | {star_status}")
         await self.app_ref.update_entry_ui_state(self.entry)
 
     async def action_toggle_read(self):
         new_status = "read" if self.entry.status == "unread" else "unread"
         await self.app_ref.api.update_entries_status([self.entry.id], new_status)
         self.entry.status = new_status
-        star_status = "STARRED" if self.entry.starred else "UNSTARRED"
-        self.query_one("#reader-status", Label).update(f"Status: {self.entry.status.upper()} | {star_status}")
+        star_status = self.locale["starred"] if self.entry.starred else self.locale["unstarred"]
+        self.query_one("#reader-status", Label).update(f"{self.locale['status']}: {self.entry.status.upper()} | {star_status}")
         await self.app_ref.update_entry_ui_state(self.entry)
 
     def action_scroll_up(self):
@@ -140,6 +202,33 @@ class EntryItem(ListItem):
 
 class TuifluxApp(App):
     TITLE = "Tuiflux"
+    BINDINGS = [
+        Binding("m", "toggle_read", "Read/Unread", show=False),
+        Binding("f", "refresh_all", "Refresh"),
+        Binding("space", "read_and_next", "Read/Unread and next"),
+        Binding("insert", "prev_feed", "Previous Feed"),
+        Binding("delete", "next_feed", "Next Feed"),
+        Binding("r", "mark_page_read", "List Read"),
+        Binding("o", "open_in_browser", "Open in Browser"),
+        Binding("s", "toggle_star", "Star/Unstar"),
+        Binding("enter", "handle_enter", "Read more"),
+        Binding("pageup", "page_up", "Page Up", show=False),
+        Binding("pagedown", "page_down", "Page Down", show=False),
+        Binding("q", "quit", "Quit"),
+        Binding("tab", "switch_focus", "Switch Pane", show=False),
+    ]
+
+    def __init__(self):
+        super().__init__()
+        config = load_config()
+        self.language = config.get("language", "en")
+        self.locale = LOCALES.get(self.language, LOCALES["en"])
+        
+        self.api = MinifluxAPI(config["server_url"], config["api_key"], verify_ssl=config.get("verify_ssl", True))
+        self.all_feeds_data = {} 
+        self.entries = []
+        self.current_feed_id = None
+        self.exhausted_feeds = set()
 
     CSS = """
     #left-pane {
@@ -198,24 +287,6 @@ class TuifluxApp(App):
     }
     """
 
-    BINDINGS = [
-        Binding("m", "toggle_read", "Read/Unread"),
-        Binding("f", "refresh_all", "Refresh"),
-        Binding("space", "read_and_next", "Read/Unread and next"),
-        Binding("insert", "prev_feed", "Previous Feed"),
-        Binding("delete", "next_feed", "Next Feed"),
-        Binding("r", "mark_page_read", "List Read"),
-        Binding("o", "open_in_browser", "Open in Browser"),
-        Binding("s", "toggle_star", "Star/Unstar"),
-        Binding("enter", "handle_enter", "Read more"),
-        Binding("pageup", "page_up", "Page Up", show=False),
-        Binding("pagedown", "page_down", "Page Down", show=False),
-
-        Binding("q", "quit", "Quit"),
-        Binding("tab", "switch_focus", "Switch Pane", show=False),
-
-    ]
-
     def action_refresh_all(self) -> None:
         self.run_worker(self.initial_load())
 
@@ -237,39 +308,41 @@ class TuifluxApp(App):
     entry_page = reactive(0)
     PAGE_SIZE = 15
 
-    def __init__(self):
-        super().__init__()
-        config = load_config()
-        self.api = MinifluxAPI(config["server_url"], config["api_key"], verify_ssl=config.get("verify_ssl", True))
-        self.all_feeds_data = {} 
-        self.entries = []
-        self.current_feed_id = None
-        self.exhausted_feeds = set()
-
     def compose(self) -> ComposeResult:
         yield Header()
-        yield Static("Initializing...", id="loading-overlay")
+        yield Static(self.locale["initializing"], id="loading-overlay")
         with Horizontal(id="main-container"):
             with Vertical(id="left-pane"):
-                yield Label("Feeds", id="feeds-label")
+                yield Label(self.locale["feeds"], id="feeds-label")
                 yield ListView(id="feed-list")
             with Vertical(id="right-pane"):
                 with Vertical(id="entry-list-container"):
-                    yield Label("Entries", id="entries-label")
+                    yield Label(self.locale["entries"], id="entries-label")
                     yield ListView(id="entry-list")
                 with Vertical(id="preview-pane"):
-                    yield Static("Select an entry to preview", id="preview-content")
+                    yield Static(self.locale["select_entry_preview"], id="preview-content")
                     yield Static("", id="preview-url")
         yield Footer()
 
     async def on_mount(self) -> None:
+        # Update localized descriptions
+        self.bind("f", "refresh_all", description=self.locale["refresh"])
+        self.bind("space", "read_and_next", description=self.locale["read_and_next"])
+        self.bind("insert", "prev_feed", description=self.locale["prev_feed"])
+        self.bind("delete", "next_feed", description=self.locale["next_feed"])
+        self.bind("r", "mark_page_read", description=self.locale["mark_page_read"])
+        self.bind("o", "open_in_browser", description=self.locale["open_in_browser"])
+        self.bind("s", "toggle_star", description=self.locale["star_unstar"])
+        self.bind("enter", "handle_enter", description=self.locale["read_more"])
+        self.bind("q", "quit", description=self.locale["quit"])
+
         self.query_one("#main-container").display = False
         self.run_worker(self.initial_load())
 
     async def initial_load(self):
         overlay = self.query_one("#loading-overlay", Static)
         overlay.display = True
-        overlay.update("Fetching feeds and counts...")
+        overlay.update(self.locale["fetching_feeds"])
         try:
             prev_feed_id = self.current_feed_id
             # Use gather but wrap in a try-except for more specific error info if needed
@@ -289,13 +362,13 @@ class TuifluxApp(App):
             self.all_feeds_data = {}
             for i, f in enumerate(feeds_data, 1):
                 if i % 10 == 0: # Reduce update frequency for performance
-                    overlay.update(f"Fetching feeds and counts... {i}/{total_feeds}")
+                    overlay.update(f"{self.locale['fetching_feeds']} {i}/{total_feeds}")
                 key = f["id"]
                 count = counters.get(str(key), counters.get(key, 0))
                 self.all_feeds_data[key] = Feed(id=key, title=f["title"], unread_count=count)
             
             if not self.all_feeds_data:
-                overlay.update("No feeds found on server.")
+                overlay.update(self.locale["no_feeds_found"])
                 return
 
             overlay.display = False
@@ -342,7 +415,7 @@ class TuifluxApp(App):
         current_index = feed_list.index
         await feed_list.clear()
         total_unread = sum(f.unread_count for f in self.all_feeds_data.values())
-        self.query_one("#feeds-label", Label).update(f"Feeds ({total_unread})")
+        self.query_one("#feeds-label", Label).update(f"{self.locale['feeds']} ({total_unread})")
         # Only show feeds with unread items as requested
         for f in self.all_feeds_data.values():
             if f.unread_count > 0:
@@ -369,7 +442,7 @@ class TuifluxApp(App):
 
     def update_preview(self, entry: Entry):
         time_str = entry.published_at.split('T')[0] # Using simple date format
-        preview_text = f"TIME: {time_str}\nSource: {entry.url}\n\n{html_to_markdown(entry.content[:500] + '...')}"
+        preview_text = f"{self.locale['time']}: {time_str}\n{self.locale['source']}: {entry.url}\n\n{html_to_markdown(entry.content[:500] + '...')}"
         self.query_one("#preview-content", Static).update(preview_text)
         self.query_one("#preview-url", Static).update("") # Clear this as it's now in content
 
@@ -382,7 +455,7 @@ class TuifluxApp(App):
         if self.current_feed_id in self.exhausted_feeds:
             return
             
-        self.query_one("#entries-label", Label).update(f"Entries... (loading...)")
+        self.query_one("#entries-label", Label).update(f"{self.locale['entries']}... ({self.locale['loading']}...)")
         new_entries = await self.api.get_entries(self.current_feed_id, offset=len(self.entries))
         if new_entries:
             self.entries.extend(new_entries)
@@ -401,7 +474,7 @@ class TuifluxApp(App):
         
         total_pages = (len(self.entries) + self.PAGE_SIZE - 1) // self.PAGE_SIZE
         current_page = self.entry_page + 1 if self.entries else 0
-        self.query_one("#entries-label", Label).update(f"Entries of {feed_name} ({current_page}/{total_pages})")
+        self.query_one("#entries-label", Label).update(f"{self.locale['entries_of']} {feed_name} ({current_page}/{total_pages})")
         
         start = self.entry_page * self.PAGE_SIZE
         page_entries = self.entries[start:start + self.PAGE_SIZE]

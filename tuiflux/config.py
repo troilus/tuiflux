@@ -21,10 +21,15 @@ def setup_config():
     verify_ssl_input = input("Verify SSL certificates? (Y/n): ").strip().lower()
     verify_ssl = verify_ssl_input != 'n'
     
+    language = input("Interface language (en/cn) [default: en]: ").strip().lower()
+    if language not in ['en', 'cn']:
+        language = 'en'
+    
     config = {
         "server_url": server_url.rstrip("/"),
         "api_key": api_key,
-        "verify_ssl": verify_ssl
+        "verify_ssl": verify_ssl,
+        "language": language
     }
     
     with open(CONFIG_FILE, "w", encoding="utf-8") as f:
