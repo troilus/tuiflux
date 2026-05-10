@@ -48,29 +48,39 @@ class MinifluxAPI:
         
         return [f for f in feeds_dict.values() if f.unread_count > 0]
 
-    async def get_entries(self, feed_id: Optional[int] = None, status: str = "unread", offset: int = 0) -> List[Entry]:
-        params = {"status": status, "limit": 90, "order": "published_at", "direction": "desc", "offset": offset}
-        if feed_id:
-            params["feed_id"] = feed_id
+    async def get_entries(self, feed_id: Optional[int] = None, status: str = "unread", 
+                            offset: int = 0, limit: int = 100) -> List[Entry]:
+            """获取条目"""
+            if feed_id:
+                # 特定feed的条目 ✅ 使用正确的端点
+                response = await self.client.get(
+                    f"/v1/feeds/{feed_id}/entries",
+                    params={"status": status, "limit": limit, "offset": offset}
+                )
+            else:
+                # 所有条目
+                response = await self.client.get(
+                    "/v1/entries",
+                    params={"status": status, "limit": limit, "offset": offset}
+                )
             
-        response = await self.client.get("/v1/entries", params=params)
-        response.raise_for_status()
-        data = response.json()
-        
-        entries = []
-        for e in data["entries"]:
-            entries.append(Entry(
-                id=e["id"],
-                title=e["title"],
-                url=e["url"],
-                content=e["content"],
-                status=e["status"],
-                starred=e["starred"],
-                feed_id=e["feed_id"],
-                feed_title=e["feed"]["title"],
-                published_at=e["published_at"]
-            ))
-        return entries
+            response.raise_for_status()
+            data = response.json()
+            
+            entries = []
+            for e in data["entries"]:
+                entries.append(Entry(
+                    id=e["id"],
+                    title=e["title"],
+                    url=e["url"],
+                    content=e["content"],
+                    status=e["status"],
+                    starred=e["starred"],
+                    feed_id=e["feed_id"],
+                    feed_title=e["feed"]["title"] if e.get("feed") else "",
+                    published_at=e["published_at"]
+                ))
+            return entries
 
     async def update_entries_status(self, entry_ids: List[int], status: str):
         response = await self.client.put("/v1/entries", json={
