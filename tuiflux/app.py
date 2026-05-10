@@ -82,35 +82,31 @@ def html_to_markdown(html_content: str) -> str:
     return text.strip()
 
 class ReaderScreen(Screen):
-    BINDINGS = [
-        Binding("escape", "app.pop_screen", "Back to list"),
-        Binding("m", "toggle_read", "Read/Unread"),
-        Binding("o", "open_in_browser", "Open in Browser"),
-        Binding("s", "toggle_star", "Star/Unstar"),
-        Binding("up", "scroll_up", "Scroll Up", show=False),
-        Binding("down", "scroll_down", "Scroll Down", show=False),
-        Binding("pageup", "page_up", "Page Up", show=False),
-        Binding("pagedown", "page_down", "Page Down", show=False),
-        Binding("space", "nothing", "Read and next", show=False),
-        Binding("r", "nothing", "List Read", show=False),
-        Binding("enter", "nothing", "Read more", show=False),
-        Binding("insert", "prev_feed", "Previous Feed", show=False),
-        Binding("delete", "next_feed", "Next Feed", show=False),
-        Binding("q", "nothing", "", show=False),
-    ]
-
     def __init__(self, entry: Entry, app_ref):
-        super().__init__()
         self.entry = entry
         self.app_ref = app_ref
         self.locale = LOCALES.get(self.app_ref.language, LOCALES["en"])
-
-    def on_mount(self):
-        # Update localized descriptions
+        super().__init__()
+        # Bind keys with localized descriptions in __init__
         self.bind("escape", "app.pop_screen", description=self.locale["back_to_list"])
         self.bind("m", "toggle_read", description=self.locale["toggle_read"])
         self.bind("o", "open_in_browser", description=self.locale["open_in_browser"])
         self.bind("s", "toggle_star", description=self.locale["star_unstar"])
+        
+        # Hidden bindings for navigation and other actions
+        self.bind("up", "scroll_up", show=False)
+        self.bind("down", "scroll_down", show=False)
+        self.bind("pageup", "page_up", show=False)
+        self.bind("pagedown", "page_down", show=False)
+        self.bind("space", "nothing", show=False)
+        self.bind("r", "nothing", show=False)
+        self.bind("enter", "nothing", show=False)
+        self.bind("insert", "prev_feed", show=False)
+        self.bind("delete", "next_feed", show=False)
+        self.bind("q", "nothing", show=False)
+
+    def on_mount(self):
+        pass
 
     def compose(self) -> ComposeResult:
         yield Header()
@@ -202,27 +198,27 @@ class EntryItem(ListItem):
 
 class TuifluxApp(App):
     TITLE = "Tuiflux"
-    BINDINGS = [
-        Binding("m", "toggle_read", "Read/Unread", show=False),
-        Binding("f", "refresh_all", "Refresh"),
-        Binding("space", "read_and_next", "Read/Unread and next"),
-        Binding("insert", "prev_feed", "Previous Feed"),
-        Binding("delete", "next_feed", "Next Feed"),
-        Binding("r", "mark_page_read", "List Read"),
-        Binding("o", "open_in_browser", "Open in Browser"),
-        Binding("s", "toggle_star", "Star/Unstar"),
-        Binding("enter", "handle_enter", "Read more"),
-        Binding("pageup", "page_up", "Page Up", show=False),
-        Binding("pagedown", "page_down", "Page Down", show=False),
-        Binding("q", "quit", "Quit"),
-        Binding("tab", "switch_focus", "Switch Pane", show=False),
-    ]
-
+    
     def __init__(self):
-        super().__init__()
         config = load_config()
         self.language = config.get("language", "en")
         self.locale = LOCALES.get(self.language, LOCALES["en"])
+        super().__init__()
+        
+        # Bind keys with localized descriptions in __init__
+        self.bind("m", "toggle_read", description=self.locale["toggle_read"], show=False)
+        self.bind("f", "refresh_all", description=self.locale["refresh"])
+        self.bind("space", "read_and_next", description=self.locale["read_and_next"])
+        self.bind("insert", "prev_feed", description=self.locale["prev_feed"])
+        self.bind("delete", "next_feed", description=self.locale["next_feed"])
+        self.bind("r", "mark_page_read", description=self.locale["mark_page_read"])
+        self.bind("o", "open_in_browser", description=self.locale["open_in_browser"])
+        self.bind("s", "toggle_star", description=self.locale["star_unstar"])
+        self.bind("enter", "handle_enter", description=self.locale["read_more"])
+        self.bind("pageup", "page_up", show=False)
+        self.bind("pagedown", "page_down", show=False)
+        self.bind("q", "quit", description=self.locale["quit"])
+        self.bind("tab", "switch_focus", show=False)
         
         self.api = MinifluxAPI(config["server_url"], config["api_key"], verify_ssl=config.get("verify_ssl", True))
         self.all_feeds_data = {} 
@@ -325,17 +321,6 @@ class TuifluxApp(App):
         yield Footer()
 
     async def on_mount(self) -> None:
-        # Update localized descriptions
-        self.bind("f", "refresh_all", description=self.locale["refresh"])
-        self.bind("space", "read_and_next", description=self.locale["read_and_next"])
-        self.bind("insert", "prev_feed", description=self.locale["prev_feed"])
-        self.bind("delete", "next_feed", description=self.locale["next_feed"])
-        self.bind("r", "mark_page_read", description=self.locale["mark_page_read"])
-        self.bind("o", "open_in_browser", description=self.locale["open_in_browser"])
-        self.bind("s", "toggle_star", description=self.locale["star_unstar"])
-        self.bind("enter", "handle_enter", description=self.locale["read_more"])
-        self.bind("q", "quit", description=self.locale["quit"])
-
         self.query_one("#main-container").display = False
         self.run_worker(self.initial_load())
 
@@ -402,6 +387,7 @@ class TuifluxApp(App):
         except Exception as e:
             overlay.update(f"Initialization Error: {e}")
             self.log(f"Initial load error: {e}")
+
 
     async def background_count_sync(self):
         try:
