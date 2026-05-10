@@ -44,6 +44,7 @@ Download form https://github.com/troilus/tuiflux/releases or：
 
 ### Global / List Mode
 - `q`: Quit the application
+- `f`: Refresh feeds and entries
 - `Tab`: Switch focus (Feeds List ↔ Article List)
 - `Enter`: Open selected article
 - `m`: Toggle read/unread status

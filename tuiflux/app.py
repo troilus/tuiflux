@@ -139,6 +139,7 @@ class EntryItem(ListItem):
         self.update_style()
 
 class TuifluxApp(App):
+    TITLE = "Tuiflux"
 
     CSS = """
     #left-pane {
@@ -198,7 +199,8 @@ class TuifluxApp(App):
     """
 
     BINDINGS = [
-        Binding("m", "toggle_read", "Read/Unread", show=False),
+        Binding("m", "toggle_read", "Read/Unread"),
+        Binding("f", "refresh_all", "Refresh"),
         Binding("space", "read_and_next", "Read/Unread and next"),
         Binding("insert", "prev_feed", "Previous Feed"),
         Binding("delete", "next_feed", "Next Feed"),
@@ -206,13 +208,16 @@ class TuifluxApp(App):
         Binding("o", "open_in_browser", "Open in Browser"),
         Binding("s", "toggle_star", "Star/Unstar"),
         Binding("enter", "handle_enter", "Read more"),
-        Binding("pageup", "page_up", "Page Up"),
-        Binding("pagedown", "page_down", "Page Down"),
+        Binding("pageup", "page_up", "Page Up", show=False),
+        Binding("pagedown", "page_down", "Page Down", show=False),
 
         Binding("q", "quit", "Quit"),
         Binding("tab", "switch_focus", "Switch Pane", show=False),
 
     ]
+
+    def action_refresh_all(self) -> None:
+        self.run_worker(self.initial_load())
 
     def action_prev_feed(self):
         feed_list = self.query_one("#feed-list", ListView)
@@ -263,8 +268,10 @@ class TuifluxApp(App):
 
     async def initial_load(self):
         overlay = self.query_one("#loading-overlay", Static)
+        overlay.display = True
         overlay.update("Fetching feeds and counts...")
         try:
+            prev_feed_id = self.current_feed_id
             # Use gather but wrap in a try-except for more specific error info if needed
             try:
                 feeds_resp, counters = await asyncio.gather(
@@ -281,7 +288,8 @@ class TuifluxApp(App):
             
             self.all_feeds_data = {}
             for i, f in enumerate(feeds_data, 1):
-                overlay.update(f"Fetching feeds and counts... {i}")
+                if i % 10 == 0: # Reduce update frequency for performance
+                    overlay.update(f"Fetching feeds and counts... {i}/{total_feeds}")
                 key = f["id"]
                 count = counters.get(str(key), counters.get(key, 0))
                 self.all_feeds_data[key] = Feed(id=key, title=f["title"], unread_count=count)
@@ -295,10 +303,26 @@ class TuifluxApp(App):
             await self.refresh_feed_list_ui()
             
             feed_list = self.query_one("#feed-list", ListView)
-            if feed_list.children:
+            
+            # Try to restore selection
+            if prev_feed_id:
+                found = False
+                for i, item in enumerate(feed_list.children):
+                    if item.feed.id == prev_feed_id:
+                        feed_list.index = i
+                        self.current_feed_id = prev_feed_id
+                        await self.load_entries(self.current_feed_id)
+                        found = True
+                        break
+                if not found and feed_list.children:
+                    feed_list.index = 0
+                    self.current_feed_id = feed_list.children[0].feed.id
+                    await self.load_entries(self.current_feed_id)
+            elif feed_list.children:
                 feed_list.index = 0
                 self.current_feed_id = feed_list.children[0].feed.id
                 await self.load_entries(self.current_feed_id)
+                
             feed_list.focus()
             
             self.run_worker(self.background_count_sync())
