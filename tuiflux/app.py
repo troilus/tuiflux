@@ -545,6 +545,8 @@ class TuifluxApp(App):
                 self.run_worker(self.fetch_more_entries())
 
     async def action_toggle_read(self) -> None:
+        if not self.focused or self.focused.id != "entry-list":
+            return
         entry_list = self.query_one("#entry-list", ListView)
         if entry_list.index is not None:
             item = entry_list.children[entry_list.index]
@@ -557,6 +559,8 @@ class TuifluxApp(App):
                 await self.sync_feed_count(item.entry.feed_id, old_status, new_status)
 
     async def action_read_and_next(self) -> None:
+        if not self.focused or self.focused.id != "entry-list":
+            return
         entry_list = self.query_one("#entry-list", ListView)
         if entry_list.index is not None:
             item = entry_list.children[entry_list.index]
@@ -587,6 +591,8 @@ class TuifluxApp(App):
             await self.refresh_feed_list_ui()
 
     async def action_mark_page_read(self) -> None:
+        if not self.focused or self.focused.id != "entry-list":
+            return
         entry_list = self.query_one("#entry-list", ListView)
         to_mark = [item.entry for item in entry_list.children if isinstance(item, EntryItem) and item.entry.status == "unread"]
         if to_mark:
