@@ -155,7 +155,13 @@ class FeedItem(ListItem):
         self.feed = feed
 
     def compose(self) -> ComposeResult:
-        yield Label(f"{self.feed.title} ({self.feed.unread_count})")
+        yield Label(f"{self.feed.title} ({self.feed.unread_count})", id="feed-label")
+
+    def update_label(self):
+        try:
+            self.query_one("#feed-label", Label).update(f"{self.feed.title} ({self.feed.unread_count})")
+        except:
+            pass
 
 class EntryItem(ListItem):
     def __init__(self, entry: Entry):
@@ -399,13 +405,29 @@ class TuifluxApp(App):
     async def refresh_feed_list_ui(self):
         feed_list = self.query_one("#feed-list", ListView)
         current_index = feed_list.index
-        await feed_list.clear()
+        
         total_unread = sum(f.unread_count for f in self.all_feeds_data.values())
         self.query_one("#feeds-label", Label).update(f"{self.locale['feeds']} ({total_unread})")
-        # Only show feeds with unread items as requested
-        for f in self.all_feeds_data.values():
-            if f.unread_count > 0:
-                await feed_list.append(FeedItem(f))
+        
+        # Get target feeds (unread > 0)
+        target_feeds = [f for f in self.all_feeds_data.values() if f.unread_count > 0]
+        
+        # Map current items
+        current_items = {item.feed.id: item for item in feed_list.children if isinstance(item, FeedItem)}
+        target_ids = [f.id for f in target_feeds]
+        
+        # If the set of feeds is the same, just update labels
+        if list(current_items.keys()) == target_ids:
+            for item in feed_list.children:
+                if isinstance(item, FeedItem):
+                    item.update_label()
+            return
+
+        # Otherwise, partial update if possible, or full refresh if too complex
+        # For simplicity and correctness with ordering, we do a smart refresh
+        await feed_list.clear()
+        for f in target_feeds:
+            await feed_list.append(FeedItem(f))
         
         if current_index is not None and current_index < len(feed_list.children):
             feed_list.index = current_index
