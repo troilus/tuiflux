@@ -398,7 +398,10 @@ class TuifluxApp(App):
                 self.current_feed_id = feed_list.children[0].feed.id
                 await self.load_entries(self.current_feed_id)
                 
-            feed_list.focus()
+            if prev_feed_id is None and self.query_one("#entry-list", ListView).children:
+                self.query_one("#entry-list", ListView).focus()
+            else:
+                feed_list.focus()
             
             self.run_worker(self.background_count_sync())
         except Exception as e:
