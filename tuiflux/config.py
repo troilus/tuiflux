@@ -25,11 +25,16 @@ def setup_config():
     if language not in ['en', 'cn']:
         language = 'en'
     
+    theme = input("Theme (default/white) [default: default]: ").strip().lower()
+    if theme not in ['default', 'white']:
+        theme = 'default'
+    
     config = {
         "server_url": server_url.rstrip("/"),
         "api_key": api_key,
         "verify_ssl": verify_ssl,
-        "language": language
+        "language": language,
+        "theme": theme
     }
     
     with open(CONFIG_FILE, "w", encoding="utf-8") as f:

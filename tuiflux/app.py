@@ -117,7 +117,8 @@ class ReaderScreen(Screen):
             pass
 
     def on_mount(self):
-        pass
+        if self.app_ref.app_theme == "white":
+            self.add_class("theme-white")
 
     def compose(self) -> ComposeResult:
         yield Header()
@@ -205,10 +206,13 @@ class EntryItem(ListItem):
         title_label.update(self.entry.title)
         time_label.update(self.get_time_str())
         
-        color = "gold" if self.entry.starred else ("gray" if self.entry.status == "read" else "white")
-        star_label.styles.color = color
-        title_label.styles.color = color
-        time_label.styles.color = color
+        self.remove_class("starred", "read", "unread")
+        if self.entry.starred:
+            self.add_class("starred")
+        elif self.entry.status == "read":
+            self.add_class("read")
+        else:
+            self.add_class("unread")
 
     def on_mount(self):
         self.update_style()
@@ -217,10 +221,11 @@ class TuifluxApp(App):
     TITLE = "Tuiflux"
     
     def __init__(self):
+        super().__init__()
         config = load_config()
         self.language = config.get("language", "en")
         self.locale = LOCALES.get(self.language, LOCALES["en"])
-        super().__init__()
+        self.app_theme = config.get("theme", "default")
         
         # Bind keys with localized descriptions in __init__
         self.bind("m", "toggle_read", description=self.locale["toggle_read"])
@@ -298,6 +303,62 @@ class TuifluxApp(App):
         color: $text;
         text-style: bold;
     }
+
+    /* Base classes for entries */
+    ListItem.starred Label { color: gold; }
+    ListItem.read Label { color: gray; }
+    ListItem.unread Label { color: white; }
+
+    /* White Theme */
+    .theme-white {
+        background: white;
+        color: black;
+    }
+    .theme-white #main-container, 
+    .theme-white #left-pane, 
+    .theme-white #right-pane, 
+    .theme-white #entry-list-container, 
+    .theme-white #preview-pane, 
+    .theme-white ListView,
+    .theme-white ScrollableContainer {
+        background: white;
+        color: black;
+    }
+    .theme-white Static, .theme-white Label {
+        background: transparent;
+        color: black;
+    }
+    .theme-white #left-pane {
+        border-right: solid black;
+    }
+    .theme-white #entry-list-container {
+        border-bottom: solid black;
+    }
+    .theme-white #reader-status {
+        background: black;
+        color: white;
+    }
+    .theme-white ListItem.--highlight {
+        background: #0078d4;
+    }
+    .theme-white ListItem.--highlight Label {
+        color: white;
+    }
+    .theme-white #loading-overlay {
+        background: white;
+        color: black;
+    }
+    .theme-white Header {
+        background: black;
+        color: white;
+    }
+    .theme-white Footer {
+        background: black;
+        color: white;
+    }
+    .theme-white ListItem.unread Label { color: black; }
+    .theme-white ListItem.read Label { color: #888; }
+    .theme-white ListItem.starred Label { color: #b8860b; }
     """
 
     def action_refresh_all(self) -> None:
@@ -338,6 +399,8 @@ class TuifluxApp(App):
         yield Footer()
 
     async def on_mount(self) -> None:
+        if self.app_theme == "white":
+            self.add_class("theme-white")
         self.query_one("#main-container").display = False
         self.run_worker(self.initial_load())
 
