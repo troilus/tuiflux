@@ -583,6 +583,9 @@ class TuifluxApp(App):
                     self.entry_page += 1
                     await self.refresh_entry_list()
                     entry_list.index = 0
+                else:
+                    # Last page, last entry marked read/unread
+                    self.query_one("#feed-list").focus()
 
     async def sync_feed_count(self, feed_id, old_status, new_status):
         feed_data = self.all_feeds_data.get(feed_id)
@@ -610,6 +613,8 @@ class TuifluxApp(App):
                 entry_list.index = 0
             else:
                 for item in entry_list.children: item.update_style()
+                # Last page marked read
+                self.query_one("#feed-list").focus()
 
     async def update_entry_ui_state(self, entry: Entry):
         entry_list = self.query_one("#entry-list", ListView)
