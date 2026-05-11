@@ -443,24 +443,28 @@ class TuifluxApp(App):
             feed_list = self.query_one("#feed-list", ListView)
             
             # Try to restore selection
+            selection_made = False
             if prev_feed_id:
-                found = False
                 for i, item in enumerate(feed_list.children):
                     if item.feed.id == prev_feed_id:
                         feed_list.index = i
                         self.current_feed_id = prev_feed_id
                         await self.load_entries(self.current_feed_id)
-                        found = True
+                        selection_made = True
                         break
-                if not found and feed_list.children:
-                    feed_list.index = 0
-                    self.current_feed_id = feed_list.children[0].feed.id
-                    await self.load_entries(self.current_feed_id)
-            elif feed_list.children:
+            
+            if not selection_made and feed_list.children:
                 feed_list.index = 0
                 self.current_feed_id = feed_list.children[0].feed.id
                 await self.load_entries(self.current_feed_id)
-                
+                selection_made = True
+            
+            if not selection_made:
+                self.entries = []
+                self.current_feed_id = None
+                await self.refresh_entry_list()
+                self.query_one("#preview-content", Static).update(self.locale["select_entry_preview"])
+
             if prev_feed_id is None and self.query_one("#entry-list", ListView).children:
                 self.query_one("#entry-list", ListView).focus()
             else:
@@ -537,7 +541,7 @@ class TuifluxApp(App):
         await self.refresh_entry_list()
 
     async def fetch_more_entries(self):
-        if self.current_feed_id in self.exhausted_feeds:
+        if self.current_feed_id is None or self.current_feed_id in self.exhausted_feeds:
             return
             
         self.query_one("#entries-label", Label).update(f"{self.locale['entries']}... ({self.locale['loading']}...)")
@@ -555,7 +559,7 @@ class TuifluxApp(App):
         await entry_list.clear()
         
         feed = self.all_feeds_data.get(self.current_feed_id)
-        feed_name = feed.title if feed else "Unknown"
+        feed_name = feed.title if feed else "None"
         
         total_pages = (len(self.entries) + self.PAGE_SIZE - 1) // self.PAGE_SIZE
         current_page = self.entry_page + 1 if self.entries else 0
@@ -575,7 +579,7 @@ class TuifluxApp(App):
             self.update_preview(entry_list.children[entry_list.index].entry)
             
         # Trigger pre-fetch if on last page
-        if current_page == total_pages:
+        if current_page == total_pages and self.current_feed_id is not None:
             self.run_worker(self.fetch_more_entries())
 
     def check_pre_fetch(self):
