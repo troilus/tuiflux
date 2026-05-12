@@ -652,7 +652,15 @@ class TuifluxApp(App):
                     entry_list.index = 0
                 else:
                     # Last page, last entry marked read/unread
-                    self.query_one("#feed-list").focus()
+                    feed_list = self.query_one("#feed-list")
+                    feed_list.focus()
+                    if feed_list.index is not None and feed_list.children:
+                        item = feed_list.children[feed_list.index]
+                        if isinstance(item, FeedItem):
+                            self.current_feed_id = item.feed.id
+                            self.entry_page = 0
+                            await self.load_entries(self.current_feed_id)
+                            self.query_one("#entry-list").focus()
 
     async def sync_feed_count(self, feed_id, old_status, new_status):
         feed_data = self.all_feeds_data.get(feed_id)
