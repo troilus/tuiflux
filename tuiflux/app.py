@@ -651,25 +651,28 @@ class TuifluxApp(App):
                     await self.refresh_entry_list()
                     entry_list.index = 0
                 else:
-                    # Last page, last entry marked read/unread
-                    feed_list = self.query_one("#feed-list")
-                    feed_list.focus()
-                    if feed_list.index is not None and feed_list.children:
-                        item = feed_list.children[feed_list.index]
-                        if isinstance(item, FeedItem):
-                            self.current_feed_id = item.feed.id
-                            self.entry_page = 0
-                            await self.load_entries(self.current_feed_id)
-                            self.query_one("#entry-list").focus()
+                    await self.jump_to_next_feed()
 
-    async def sync_feed_count(self, feed_id, old_status, new_status):
+    async def sync_feed_count(self, feed_id, old_status, new_status, refresh_ui=True):
         feed_data = self.all_feeds_data.get(feed_id)
         if feed_data:
             if old_status == "unread" and new_status == "read":
                 feed_data.unread_count = max(0, feed_data.unread_count - 1)
             elif old_status == "read" and new_status == "unread":
                 feed_data.unread_count += 1
-            await self.refresh_feed_list_ui()
+            if refresh_ui:
+                await self.refresh_feed_list_ui()
+
+    async def jump_to_next_feed(self):
+        feed_list = self.query_one("#feed-list")
+        feed_list.focus()
+        if feed_list.index is not None and feed_list.children:
+            item = feed_list.children[feed_list.index]
+            if isinstance(item, FeedItem):
+                self.current_feed_id = item.feed.id
+                self.entry_page = 0
+                await self.load_entries(self.current_feed_id)
+                self.query_one("#entry-list").focus()
 
     async def action_mark_page_read(self) -> None:
         if not self.focused or self.focused.id != "entry-list":
@@ -678,18 +681,22 @@ class TuifluxApp(App):
         to_mark = [item.entry for item in entry_list.children if isinstance(item, EntryItem) and item.entry.status == "unread"]
         if to_mark:
             await self.api.update_entries_status([e.id for e in to_mark], "read")
-            for e in to_mark:
+            for e in to_mark[:-1]:
                 e.status = "read"
-                await self.sync_feed_count(e.feed_id, "unread", "read")
+                await self.sync_feed_count(e.feed_id, "unread", "read", refresh_ui=False)
+            if to_mark:
+                e = to_mark[-1]
+                e.status = "read"
+                await self.sync_feed_count(e.feed_id, "unread", "read", refresh_ui=True)
             
-            if (self.entry_page + 1) * self.PAGE_SIZE < len(self.entries):
-                self.entry_page += 1
-                await self.refresh_entry_list()
-                entry_list.index = 0
-            else:
+        if (self.entry_page + 1) * self.PAGE_SIZE < len(self.entries):
+            self.entry_page += 1
+            await self.refresh_entry_list()
+            entry_list.index = 0
+        else:
+            if to_mark:
                 for item in entry_list.children: item.update_style()
-                # Last page marked read
-                self.query_one("#feed-list").focus()
+            await self.jump_to_next_feed()
 
     async def update_entry_ui_state(self, entry: Entry):
         entry_list = self.query_one("#entry-list", ListView)
