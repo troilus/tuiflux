@@ -667,11 +667,16 @@ class TuifluxApp(App):
         feed_list = self.query_one("#feed-list")
         feed_list.focus()
         if feed_list.index is not None and feed_list.children:
+            if feed_list.index < len(feed_list.children) - 1:
+                feed_list.index += 1
             item = feed_list.children[feed_list.index]
             if isinstance(item, FeedItem):
                 self.current_feed_id = item.feed.id
                 self.entry_page = 0
                 await self.load_entries(self.current_feed_id)
+                entry_list = self.query_one("#entry-list", ListView)
+                if entry_list.children:
+                    entry_list.index = 0
                 self.query_one("#entry-list").focus()
 
     async def action_mark_page_read(self) -> None:
