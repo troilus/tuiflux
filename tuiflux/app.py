@@ -16,6 +16,8 @@ from .api import MinifluxAPI
 from .models import Feed, Entry
 from .config import load_config
 
+VERSION = "0.6"
+
 LOCALES = {
     "en": {
         "back_to_list": "Back to list",
@@ -56,6 +58,9 @@ LOCALES = {
         "settings_save": "Save",
         "settings_cancel": "Cancel",
         "settings_saved": "Settings saved",
+        "help": "Help",
+        "help_close": "Close",
+        "help_version": "Version",
     },
     "cn": {
         "back_to_list": "返回列表",
@@ -96,6 +101,9 @@ LOCALES = {
         "settings_save": "保存",
         "settings_cancel": "取消",
         "settings_saved": "设置已保存",
+        "help": "帮助",
+        "help_close": "关闭",
+        "help_version": "版本",
     }
 }
 
@@ -396,7 +404,6 @@ class SettingsProvider(Provider):
         yield DiscoveryHit(
             self.app.locale.get("settings", "Settings"),
             self.open_settings,
-            help=self.app.locale.get("settings", ""),
         )
 
     async def search(self, query: str) -> Hits:
@@ -407,11 +414,95 @@ class SettingsProvider(Provider):
                 1,
                 command_name,
                 self.open_settings,
-                help=self.app.locale.get("settings", ""),
             )
 
     async def open_settings(self) -> None:
         await self.app.push_screen(SettingsScreen())
+
+
+class HelpScreen(Screen):
+    CSS = """
+    #help-container {
+        padding: 1 2;
+    }
+    #help-title {
+        text-style: bold;
+        height: 3;
+        content-align: center middle;
+        margin-bottom: 1;
+    }
+    #help-version {
+        height: 1;
+        margin-bottom: 1;
+    }
+    #help-keys {
+        height: 1fr;
+    }
+    .help-row {
+        height: 1;
+    }
+    #help-buttons {
+        align: center middle;
+        margin-top: 1;
+    }
+    """
+
+    def compose(self) -> ComposeResult:
+        yield Header()
+        with Vertical(id="help-container"):
+            yield Label("Tuiflux", id="help-title")
+            yield Label(f'{self._l("help_version")}: {VERSION}', id="help-version")
+            with Vertical(id="help-keys"):
+                yield Label("  q  — " + self._lk("quit"), classes="help-row")
+                yield Label("  f  — " + self._lk("refresh"), classes="help-row")
+                yield Label("  Tab — " + self._lk("switch_pane"), classes="help-row")
+                yield Label("  Enter — " + self._lk("read_more"), classes="help-row")
+                yield Label("  m  — " + self._lk("toggle_read"), classes="help-row")
+                yield Label("  Space — " + self._lk("read_and_next"), classes="help-row")
+                yield Label("  s  — " + self._lk("star_unstar"), classes="help-row")
+                yield Label("  o  — " + self._lk("open_in_browser"), classes="help-row")
+                yield Label("  r  — " + self._lk("mark_page_read"), classes="help-row")
+                yield Label("  Insert — " + self._lk("prev_feed"), classes="help-row")
+                yield Label("  Delete — " + self._lk("next_feed"), classes="help-row")
+                yield Label("  PageUp — Scroll up", classes="help-row")
+                yield Label("  PageDown — Scroll down", classes="help-row")
+            with Horizontal(id="help-buttons"):
+                yield Button(self._l("help_close"), variant="primary", id="close")
+        yield Footer()
+
+    def _l(self, key):
+        return self.app.locale.get(key, key)
+    
+    def _lk(self, key):
+        return self.app.locale.get(key, key)
+
+    def on_mount(self):
+        if self.app.app_theme == "white":
+            self.add_class("theme-white")
+
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        self.dismiss()
+
+
+class HelpProvider(Provider):
+    async def discover(self) -> Hits:
+        yield DiscoveryHit(
+            self.app.locale.get("help", "Help"),
+            self.open_help,
+        )
+
+    async def search(self, query: str) -> Hits:
+        matcher = self.matcher(query)
+        command_name = self.app.locale.get("help", "Help")
+        if matcher.match(command_name):
+            yield Hit(
+                1,
+                command_name,
+                self.open_help,
+            )
+
+    async def open_help(self) -> None:
+        await self.app.push_screen(HelpScreen())
 
 
 class FlushHistoryProvider(Provider):
@@ -419,7 +510,6 @@ class FlushHistoryProvider(Provider):
         yield DiscoveryHit(
             self.app.locale.get("flush_read_history", "Flush read history"),
             self.flush_read_history,
-            help=self.app.locale.get("flush_read_history", ""),
         )
 
     async def search(self, query: str) -> Hits:
@@ -430,7 +520,6 @@ class FlushHistoryProvider(Provider):
                 1,
                 command_name,
                 self.flush_read_history,
-                help=self.app.locale.get("flush_no_entries", ""),
             )
 
     async def flush_read_history(self) -> None:
@@ -468,8 +557,8 @@ class FlushHistoryProvider(Provider):
 
 
 class TuifluxApp(App):
-    TITLE = "Tuiflux"
-    COMMANDS = {FlushHistoryProvider, SettingsProvider}
+    TITLE = f"Tuiflux(v{VERSION})"
+    COMMANDS = {FlushHistoryProvider, SettingsProvider, HelpProvider}
     
     def __init__(self):
         super().__init__()
