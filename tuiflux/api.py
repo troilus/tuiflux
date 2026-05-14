@@ -121,5 +121,14 @@ class MinifluxAPI:
                 break
         return counters
 
+    async def get_read_entries_count(self) -> int:
+        resp = await self.client.get("/v1/entries", params={"status": "read", "limit": 1})
+        resp.raise_for_status()
+        return resp.json().get("total", 0)
+
+    async def flush_history(self) -> None:
+        resp = await self.client.put("/v1/flush-history")
+        resp.raise_for_status()
+
     async def close(self):
         await self.client.aclose()

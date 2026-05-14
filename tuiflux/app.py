@@ -3,7 +3,8 @@ import asyncio
 import re
 import html
 from textual.app import App, ComposeResult
-from textual.widgets import Header, Footer, ListView, ListItem, Label, Static
+from textual.widgets import Header, Footer, ListView, ListItem, Label, Static, Button
+from textual.command import Provider, Hit, DiscoveryHit, Hits
 from textual.containers import Horizontal, Vertical, ScrollableContainer
 from textual.binding import Binding
 from textual.screen import Screen
@@ -40,6 +41,10 @@ LOCALES = {
         "time": "TIME",
         "entries_of": "Entries of",
         "loading": "loading",
+        "flush_read_history": "Flush read history",
+        "flush_confirm": "Flush %d read entries? (bookmarked kept)",
+        "flush_success": "Read history flushed",
+        "flush_no_entries": "No read entries to flush",
     },
     "cn": {
         "back_to_list": "返回列表",
@@ -67,6 +72,10 @@ LOCALES = {
         "time": "时间",
         "entries_of": "文章列表 -",
         "loading": "正在加载",
+        "flush_read_history": "清空已读文章",
+        "flush_confirm": "清空 %d 篇已读文章？（收藏的保留）",
+        "flush_success": "已读文章已清空",
+        "flush_no_entries": "没有已读文章可清空",
     }
 }
 
@@ -217,8 +226,94 @@ class EntryItem(ListItem):
     def on_mount(self):
         self.update_style()
 
+
+class ConfirmScreen(Screen):
+    CSS = """
+    #confirm-message {
+        padding: 1 2;
+        height: 3;
+        content-align: center middle;
+    }
+    #confirm-buttons {
+        align: center middle;
+    }
+    #confirm-buttons Button {
+        margin: 0 1;
+    }
+    """
+
+    def __init__(self, message: str):
+        super().__init__()
+        self.message = message
+
+    def compose(self) -> ComposeResult:
+        yield Header()
+        yield Label(self.message, id="confirm-message")
+        with Horizontal(id="confirm-buttons"):
+            yield Button("Yes", variant="primary", id="yes")
+            yield Button("No", variant="default", id="no")
+        yield Footer()
+
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        self.dismiss(event.button.id == "yes")
+
+
+class FlushHistoryProvider(Provider):
+    async def discover(self) -> Hits:
+        yield DiscoveryHit(
+            self.app.locale.get("flush_read_history", "Flush read history"),
+            self.flush_read_history,
+            help=self.app.locale.get("flush_read_history", ""),
+        )
+
+    async def search(self, query: str) -> Hits:
+        matcher = self.matcher(query)
+        command_name = self.app.locale.get("flush_read_history", "Flush read history")
+        if matcher.match(command_name):
+            yield Hit(
+                1,
+                command_name,
+                self.flush_read_history,
+                help=self.app.locale.get("flush_no_entries", ""),
+            )
+
+    async def flush_read_history(self) -> None:
+        app = self.app
+        locale = app.locale
+        try:
+            count = await app.api.get_read_entries_count()
+            if count == 0:
+                app.notify(locale.get("flush_no_entries", "No read entries to flush"), severity="information")
+                return
+
+            def on_confirm(confirmed: bool) -> None:
+                if confirmed:
+                    app.run_worker(self._execute_flush())
+
+            app.push_screen(
+                ConfirmScreen(locale.get("flush_confirm", "Flush %d read entries? (bookmarked kept)") % count),
+                callback=on_confirm,
+            )
+        except Exception as e:
+            app.notify(str(e), severity="error")
+
+    async def _execute_flush(self) -> None:
+        app = self.app
+        locale = app.locale
+        try:
+            await app.api.flush_history()
+            app.notify(locale.get("flush_success", "Read history flushed"), severity="information")
+            app.current_feed_id = None
+            app.entries = []
+            app.exhausted_feeds = set()
+            app.run_worker(app.initial_load())
+        except Exception as e:
+            app.notify(str(e), severity="error")
+
+
 class TuifluxApp(App):
     TITLE = "Tuiflux"
+    COMMANDS = {FlushHistoryProvider}
     
     def __init__(self):
         super().__init__()
