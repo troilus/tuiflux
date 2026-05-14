@@ -16,7 +16,7 @@ from .api import MinifluxAPI
 from .models import Feed, Entry
 from .config import load_config
 
-VERSION = "0.6"
+VERSION = "0.7"
 
 LOCALES = {
     "en": {
@@ -61,6 +61,8 @@ LOCALES = {
         "help": "Help",
         "help_close": "Close",
         "help_version": "Version",
+        "page_up": "Page up",
+        "page_down": "Page down",
     },
     "cn": {
         "back_to_list": "返回列表",
@@ -104,6 +106,8 @@ LOCALES = {
         "help": "帮助",
         "help_close": "关闭",
         "help_version": "版本",
+        "page_up": "上一页",
+        "page_down": "下一页",
     }
 }
 
@@ -256,6 +260,10 @@ class EntryItem(ListItem):
 
 
 class ConfirmScreen(Screen):
+    BINDINGS = [
+        Binding("escape", "dismiss", "Back"),
+    ]
+
     CSS = """
     #confirm-message {
         padding: 1 2;
@@ -285,8 +293,15 @@ class ConfirmScreen(Screen):
     def on_button_pressed(self, event: Button.Pressed) -> None:
         self.dismiss(event.button.id == "yes")
 
+    def action_dismiss(self) -> None:
+        self.dismiss(False)
+
 
 class SettingsScreen(Screen):
+    BINDINGS = [
+        Binding("escape", "dismiss", "Back"),
+    ]
+
     CSS = """
     #settings-container {
         padding: 1 2;
@@ -421,6 +436,10 @@ class SettingsProvider(Provider):
 
 
 class HelpScreen(Screen):
+    BINDINGS = [
+        Binding("escape", "dismiss", "Back"),
+    ]
+
     CSS = """
     #help-container {
         padding: 1 2;
@@ -464,8 +483,8 @@ class HelpScreen(Screen):
                 yield Label("  r  — " + self._lk("mark_page_read"), classes="help-row")
                 yield Label("  Insert — " + self._lk("prev_feed"), classes="help-row")
                 yield Label("  Delete — " + self._lk("next_feed"), classes="help-row")
-                yield Label("  PageUp — Scroll up", classes="help-row")
-                yield Label("  PageDown — Scroll down", classes="help-row")
+                yield Label("  PageUp — " + self._lk("page_up"), classes="help-row")
+                yield Label("  PageDown — " + self._lk("page_down"), classes="help-row")
             with Horizontal(id="help-buttons"):
                 yield Button(self._l("help_close"), variant="primary", id="close")
         yield Footer()
@@ -857,6 +876,9 @@ class TuifluxApp(App):
 
     async def on_list_view_selected(self, event: ListView.Selected) -> None:
         if event.list_view.id == "feed-list":
+            if self.current_feed_id == event.item.feed.id:
+                self.query_one("#entry-list").focus()
+                return
             self.current_feed_id = event.item.feed.id
             self.entry_page = 0
             await self.load_entries(self.current_feed_id)
