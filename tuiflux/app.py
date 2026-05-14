@@ -2,8 +2,10 @@ import webbrowser
 import asyncio
 import re
 import html
+import json
+from pathlib import Path
 from textual.app import App, ComposeResult
-from textual.widgets import Header, Footer, ListView, ListItem, Label, Static, Button
+from textual.widgets import Header, Footer, ListView, ListItem, Label, Static, Button, Input, Select
 from textual.command import Provider, Hit, DiscoveryHit, Hits
 from textual.containers import Horizontal, Vertical, ScrollableContainer
 from textual.binding import Binding
@@ -45,6 +47,15 @@ LOCALES = {
         "flush_confirm": "Flush %d read entries? (bookmarked kept)",
         "flush_success": "Read history flushed",
         "flush_no_entries": "No read entries to flush",
+        "settings": "Settings",
+        "settings_server_url": "Server URL",
+        "settings_api_key": "API Key",
+        "settings_language": "Language",
+        "settings_theme": "Theme",
+        "settings_verify_ssl": "Verify SSL",
+        "settings_save": "Save",
+        "settings_cancel": "Cancel",
+        "settings_saved": "Settings saved",
     },
     "cn": {
         "back_to_list": "返回列表",
@@ -76,6 +87,15 @@ LOCALES = {
         "flush_confirm": "清空 %d 篇已读文章？（收藏的保留）",
         "flush_success": "已读文章已清空",
         "flush_no_entries": "没有已读文章可清空",
+        "settings": "设置",
+        "settings_server_url": "服务器地址",
+        "settings_api_key": "API 密钥",
+        "settings_language": "语言",
+        "settings_theme": "主题",
+        "settings_verify_ssl": "SSL 验证",
+        "settings_save": "保存",
+        "settings_cancel": "取消",
+        "settings_saved": "设置已保存",
     }
 }
 
@@ -258,6 +278,142 @@ class ConfirmScreen(Screen):
         self.dismiss(event.button.id == "yes")
 
 
+class SettingsScreen(Screen):
+    CSS = """
+    #settings-container {
+        padding: 1 2;
+    }
+    #settings-title {
+        text-style: bold;
+        height: 3;
+        content-align: center middle;
+    }
+    .settings-row {
+        height: 3;
+        margin-bottom: 1;
+    }
+    .settings-label {
+        width: 18;
+        padding-top: 1;
+    }
+    .settings-input {
+        width: 1fr;
+    }
+    #settings-buttons {
+        align: center middle;
+        margin-top: 1;
+    }
+    #settings-buttons Button {
+        margin: 0 1;
+    }
+    """
+
+    def compose(self) -> ComposeResult:
+        yield Header()
+        with Vertical(id="settings-container"):
+            yield Label("Settings", id="settings-title")
+            with Vertical(id="settings-form"):
+                with Horizontal(classes="settings-row"):
+                    yield Label(self._l("settings_server_url"), classes="settings-label")
+                    yield Input(placeholder="https://miniflux.example.com", id="settings-server-url", classes="settings-input")
+                with Horizontal(classes="settings-row"):
+                    yield Label(self._l("settings_api_key"), classes="settings-label")
+                    yield Input(placeholder="", id="settings-api-key", classes="settings-input")
+                with Horizontal(classes="settings-row"):
+                    yield Label(self._l("settings_language"), classes="settings-label")
+                    yield Select([("en", "en"), ("cn", "cn")], id="settings-language")
+                with Horizontal(classes="settings-row"):
+                    yield Label(self._l("settings_theme"), classes="settings-label")
+                    yield Select([("default", "default"), ("white", "white")], id="settings-theme")
+                with Horizontal(classes="settings-row"):
+                    yield Label(self._l("settings_verify_ssl"), classes="settings-label")
+                    yield Select([("Yes", True), ("No", False)], id="settings-verify-ssl")
+            with Horizontal(id="settings-buttons"):
+                yield Button(self._l("settings_save"), variant="primary", id="save")
+                yield Button(self._l("settings_cancel"), variant="default", id="cancel")
+        yield Footer()
+
+    def _l(self, key):
+        return self.app.locale.get(key, key)
+
+    def on_mount(self):
+        config = load_config()
+        self.query_one("#settings-server-url", Input).value = config.get("server_url", "")
+        self.query_one("#settings-api-key", Input).value = config.get("api_key", "")
+        self.query_one("#settings-language", Select).value = config.get("language", "en")
+        self.query_one("#settings-theme", Select).value = config.get("theme", "default")
+        self.query_one("#settings-verify-ssl", Select).value = config.get("verify_ssl", True)
+        if self.app.app_theme == "white":
+            self.add_class("theme-white")
+
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        if event.button.id == "cancel":
+            self.dismiss()
+        elif event.button.id == "save":
+            self.run_worker(self._save_settings())
+
+    async def _save_settings(self):
+        app = self.app
+        new_url = self.query_one("#settings-server-url", Input).value.strip().rstrip("/")
+        new_key = self.query_one("#settings-api-key", Input).value.strip()
+        new_lang = self.query_one("#settings-language", Select).value
+        new_theme = self.query_one("#settings-theme", Select).value
+        new_verify = self.query_one("#settings-verify-ssl", Select).value
+
+        config = load_config()
+        config["server_url"] = new_url
+        config["api_key"] = new_key
+        config["language"] = new_lang
+        config["theme"] = new_theme
+        config["verify_ssl"] = new_verify
+
+        with open("config.json", "w", encoding="utf-8") as f:
+            json.dump(config, f, indent=4)
+
+        if new_lang != app.language:
+            app.language = new_lang
+            app.locale = LOCALES.get(new_lang, LOCALES["en"])
+
+        if new_theme != app.app_theme:
+            app.app_theme = new_theme
+            if new_theme == "white":
+                app.add_class("theme-white")
+            else:
+                app.remove_class("theme-white")
+
+        app.api = MinifluxAPI(new_url, new_key, verify_ssl=new_verify)
+        app.current_feed_id = None
+        app.entries = []
+        app.exhausted_feeds = set()
+        app.run_worker(app.initial_load())
+
+        app.notify(self._l("settings_saved"), severity="information")
+        self.dismiss()
+
+
+class SettingsProvider(Provider):
+    async def discover(self) -> Hits:
+        yield DiscoveryHit(
+            self.app.locale.get("settings", "Settings"),
+            self.open_settings,
+            help=self.app.locale.get("settings", ""),
+        )
+
+    async def search(self, query: str) -> Hits:
+        matcher = self.matcher(query)
+        command_name = self.app.locale.get("settings", "Settings")
+        if matcher.match(command_name):
+            yield Hit(
+                1,
+                command_name,
+                self.open_settings,
+                help=self.app.locale.get("settings", ""),
+            )
+
+    async def open_settings(self) -> None:
+        await self.app.push_screen(SettingsScreen())
+
+
 class FlushHistoryProvider(Provider):
     async def discover(self) -> Hits:
         yield DiscoveryHit(
@@ -313,7 +469,7 @@ class FlushHistoryProvider(Provider):
 
 class TuifluxApp(App):
     TITLE = "Tuiflux"
-    COMMANDS = {FlushHistoryProvider}
+    COMMANDS = {FlushHistoryProvider, SettingsProvider}
     
     def __init__(self):
         super().__init__()
