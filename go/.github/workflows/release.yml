@@ -1,0 +1,96 @@
+name: Go Build and Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to release (e.g., v1.0.0)'
+        required: true
+      release_notes:
+        description: 'Release Notes'
+        required: true
+        type: string
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: windows-latest
+            goos: windows
+            goarch: amd64
+            extension: .exe
+          - os: ubuntu-latest
+            goos: linux
+            goarch: amd64
+            extension: ''
+          - os: ubuntu-latest
+            goos: linux
+            goarch: arm64
+            extension: ''
+          - os: ubuntu-latest
+            goos: linux
+            goarch: arm
+            goarm: '7'
+            extension: ''
+          - os: macos-latest
+            goos: darwin
+            goarch: amd64
+            extension: ''
+          - os: macos-latest
+            goos: darwin
+            goarch: arm64
+            extension: ''
+
+    defaults:
+      run:
+        working-directory: go
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+
+      - name: Resolve dependencies
+        run: go mod tidy
+
+      - name: Build
+        run: |
+          GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} GOARM=${{ matrix.goarm }} go build -o tuiflux_go-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.extension }} ./cmd/tuiflux/
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: tuiflux_go-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: go/tuiflux_go-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.extension }}
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Display structure of downloaded files
+        run: ls -R artifacts
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event.inputs.tag }}
+          name: Release ${{ github.event.inputs.tag }}
+          body: ${{ github.event.inputs.release_notes }}
+          files: |
+            artifacts/**/*
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
