@@ -55,13 +55,13 @@ class MinifluxAPI:
                 # 特定feed的条目 ✅ 使用正确的端点
                 response = await self.client.get(
                     f"/v1/feeds/{feed_id}/entries",
-                    params={"status": status, "limit": limit, "offset": offset}
+                    params={"status": status, "limit": limit, "offset": offset, "direction": "desc"}
                 )
             else:
                 # 所有条目
                 response = await self.client.get(
                     "/v1/entries",
-                    params={"status": status, "limit": limit, "offset": offset}
+                    params={"status": status, "limit": limit, "offset": offset, "direction": "desc"}
                 )
             
             response.raise_for_status()
