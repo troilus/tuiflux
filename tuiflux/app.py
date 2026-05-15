@@ -16,7 +16,7 @@ from .api import MinifluxAPI
 from .models import Feed, Entry
 from .config import load_config
 
-VERSION = "0.8"
+VERSION = "0.9"
 
 LOCALES = {
     "en": {
