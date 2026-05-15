@@ -16,7 +16,7 @@ from .api import MinifluxAPI
 from .models import Feed, Entry
 from .config import load_config
 
-VERSION = "0.7"
+VERSION = "0.8"
 
 LOCALES = {
     "en": {
@@ -619,6 +619,9 @@ class TuifluxApp(App):
         height: 17;
         border-bottom: solid orange;
     }
+    #feed-list {
+        height: 1fr;
+    }
     #preview-pane {
         height: 1fr;
         padding: 1 2;
@@ -967,6 +970,8 @@ class TuifluxApp(App):
             if self.entry_page > 0:
                 self.entry_page -= 1
                 self.run_worker(self.refresh_entry_list())
+        elif self.focused and self.focused.id == "feed-list":
+            self.query_one("#feed-list", ListView).action_page_up()
 
     def action_page_down(self) -> None:
         if self.focused and self.focused.id == "entry-list":
@@ -975,6 +980,8 @@ class TuifluxApp(App):
                 self.run_worker(self.refresh_entry_list())
             else:
                 self.run_worker(self.fetch_more_entries())
+        elif self.focused and self.focused.id == "feed-list":
+            self.query_one("#feed-list", ListView).action_page_down()
 
     async def action_toggle_read(self) -> None:
         if not self.focused or self.focused.id != "entry-list":
